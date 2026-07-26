@@ -407,6 +407,29 @@ type NotificationJobRecord = {
   updatedAt: string
   completedAt: string | null
 }
+type ProjectUsageSnapshot = {
+  window: string
+  counts: {
+    workflowRuns: number
+    metricSamples: number
+    alerts: number
+    notificationJobs: number
+    notificationDeliveries: number
+    reportShares: number
+    activeIngestionTokens: number
+    rateLimitBuckets: number
+  }
+  rateLimits: {
+    tokenPerMinute: number
+    projectPerMinute: number
+  }
+  retention: {
+    id: string
+    label: string
+    days: number
+    summary: string
+  }[]
+}
 type IngestionTokenRecord = {
   id: string
   name: string
@@ -644,6 +667,7 @@ const sectionSubsections: Record<DashboardSection, { id: string; label: string; 
   testing: [
     { id: "testing-readiness", label: "Readiness" },
     { id: "testing-jobs", label: "Notification jobs" },
+    { id: "testing-usage", label: "Usage" },
     { id: "testing-polling", label: "Polling" },
     { id: "testing-notifications", label: "Notifications" },
     { id: "testing-integrations", label: "Integrations" },
@@ -968,6 +992,8 @@ export function MeridianDashboard({
   const [notificationJobs, setNotificationJobs] = useState<NotificationJobRecord[]>([])
   const [notificationJobCounts, setNotificationJobCounts] = useState<Record<string, number>>({})
   const [notificationJobMessage, setNotificationJobMessage] = useState("")
+  const [projectUsage, setProjectUsage] = useState<ProjectUsageSnapshot | null>(null)
+  const [projectUsageMessage, setProjectUsageMessage] = useState("")
   const [reportShares, setReportShares] = useState<ReportShareRecord[]>([])
   const [reportPresets, setReportPresets] = useState<ReportPresetRecord[]>([])
   const [selectedReportPresetId, setSelectedReportPresetId] = useState("")
@@ -1643,6 +1669,18 @@ export function MeridianDashboard({
     setNotificationJobs(payload.jobs ?? [])
     setNotificationJobCounts(payload.counts ?? {})
     setNotificationJobMessage(`${payload.jobs?.length ?? 0} recent notification jobs loaded.`)
+  }
+
+  const loadProjectUsage = async () => {
+    setProjectUsageMessage("Loading project usage...")
+    const response = await fetch(`/api/projects/${initialWorkspace.project.id}/usage?window=30d`)
+    const payload = await response.json().catch(() => null)
+    if (!response.ok) {
+      setProjectUsageMessage(payload?.error ?? "Project usage failed to load.")
+      return
+    }
+    setProjectUsage(payload.usage ?? null)
+    setProjectUsageMessage("Project usage loaded for the last 30 days.")
   }
 
   const retryNotificationJob = async (jobId: string) => {
@@ -3473,6 +3511,8 @@ export function MeridianDashboard({
             notificationJobs={notificationJobs}
             notificationJobCounts={notificationJobCounts}
             notificationJobMessage={notificationJobMessage}
+            projectUsage={projectUsage}
+            projectUsageMessage={projectUsageMessage}
             selectedNode={selectedNode}
             canManageOrganization={canManageOrganization}
             canEditProject={canEditProject}
@@ -3483,6 +3523,7 @@ export function MeridianDashboard({
             onTestSlackDestination={testSlackDestination}
             onLoadSlackDestinations={loadSlackDestinations}
             onLoadNotificationJobs={loadNotificationJobs}
+            onLoadProjectUsage={loadProjectUsage}
             onRetryNotificationJob={retryNotificationJob}
             onCancelNotificationJob={cancelNotificationJob}
             onOpenMap={() => openDashboardSection("map")}
@@ -5774,6 +5815,8 @@ function TestingSection({
   notificationJobs,
   notificationJobCounts,
   notificationJobMessage,
+  projectUsage,
+  projectUsageMessage,
   selectedNode,
   canManageOrganization,
   canEditProject,
@@ -5784,6 +5827,7 @@ function TestingSection({
   onTestSlackDestination,
   onLoadSlackDestinations,
   onLoadNotificationJobs,
+  onLoadProjectUsage,
   onRetryNotificationJob,
   onCancelNotificationJob,
   onOpenMap,
@@ -5803,6 +5847,8 @@ function TestingSection({
   notificationJobs: NotificationJobRecord[]
   notificationJobCounts: Record<string, number>
   notificationJobMessage: string
+  projectUsage: ProjectUsageSnapshot | null
+  projectUsageMessage: string
   selectedNode?: EndpointNodeData
   canManageOrganization: boolean
   canEditProject: boolean
@@ -5813,6 +5859,7 @@ function TestingSection({
   onTestSlackDestination: (slackId: string) => Promise<void>
   onLoadSlackDestinations: () => Promise<void>
   onLoadNotificationJobs: () => Promise<void>
+  onLoadProjectUsage: () => Promise<void>
   onRetryNotificationJob: (jobId: string) => Promise<void>
   onCancelNotificationJob: (jobId: string) => Promise<void>
   onOpenMap: () => void
@@ -5870,6 +5917,49 @@ function TestingSection({
                 </div>
               )) : <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">Load notification jobs to inspect queue health.</div>}
             </div>
+          </div>
+        </details>
+
+        <details id="testing-usage" open className="rounded-lg border bg-background">
+          <summary className="cursor-pointer px-5 py-4 font-semibold">Project usage</summary>
+          <div className="grid gap-4 px-5 pb-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="sm" variant="outline" onClick={onLoadProjectUsage}>Refresh usage</Button>
+              {projectUsage ? <Badge variant="outline">Window: {projectUsage.window}</Badge> : null}
+              {projectUsageMessage ? <span className="text-xs text-muted-foreground">{projectUsageMessage}</span> : null}
+            </div>
+            {projectUsage ? (
+              <>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <MetricTile label="Workflow runs" value={String(projectUsage.counts.workflowRuns)} detail="Accepted telemetry" tone="neutral" />
+                  <MetricTile label="Metric samples" value={String(projectUsage.counts.metricSamples)} detail="Persisted API samples" tone="neutral" />
+                  <MetricTile label="Notification jobs" value={String(projectUsage.counts.notificationJobs)} detail={`${projectUsage.counts.notificationDeliveries} deliveries`} tone="neutral" />
+                  <MetricTile label="Reports" value={String(projectUsage.counts.reportShares)} detail={`${projectUsage.counts.alerts} alert incidents`} tone="neutral" />
+                </div>
+                <div className="grid gap-3 lg:grid-cols-2">
+                  <div className="rounded-lg border bg-muted/20 p-3 text-sm">
+                    <div className="font-medium">Ingestion limits</div>
+                    <div className="mt-2 grid gap-1 text-xs text-muted-foreground">
+                      <div>Per token: {projectUsage.rateLimits.tokenPerMinute} accepted runs/minute</div>
+                      <div>Per project: {projectUsage.rateLimits.projectPerMinute} accepted runs/minute</div>
+                      <div>Active tokens: {projectUsage.counts.activeIngestionTokens}</div>
+                    </div>
+                  </div>
+                  <div className="rounded-lg border bg-muted/20 p-3 text-sm">
+                    <div className="font-medium">Retention policy</div>
+                    <div className="mt-2 grid gap-1 text-xs text-muted-foreground">
+                      {projectUsage.retention.slice(0, 5).map((row) => (
+                        <div key={row.id}>{row.summary}</div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                Refresh usage to inspect bounded run, metric, alert, notification, report, token, and retention guardrails.
+              </div>
+            )}
           </div>
         </details>
 

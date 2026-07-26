@@ -5,6 +5,7 @@ import "server-only"
 
 import { inngest } from "@/inngest/client"
 import { executeNotificationJobAttempt, markNotificationJobFailed, recoverNotificationJobs } from "@/lib/notification-jobs"
+import { cleanupExpiredOperationalData } from "@/lib/retention-cleanup"
 
 export const processNotificationJob = inngest.createFunction(
   {
@@ -31,4 +32,13 @@ export const recoverQueuedNotifications = inngest.createFunction(
     retries: 2,
   },
   async ({ step }) => step.run("recover-notification-outbox", recoverNotificationJobs)
+)
+
+export const cleanupOperationalRetention = inngest.createFunction(
+  {
+    id: "cleanup-operational-retention",
+    triggers: { cron: "17 2 * * *" },
+    retries: 2,
+  },
+  async ({ step }) => step.run("cleanup-operational-retention", cleanupExpiredOperationalData)
 )

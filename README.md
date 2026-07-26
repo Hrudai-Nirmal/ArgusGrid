@@ -159,7 +159,11 @@ Native Slack alert destinations also live in `Integrations`, using Slack incomin
 
 ## Durable Notification Jobs
 
-Alert email, generic webhook, and Slack delivery run through a Postgres-backed outbox and Inngest. Meridian writes one job per recipient/destination in the same transaction as the alert lifecycle change, then sends Inngest only the job id and generation. Jobs survive failed event publishing, retry five total attempts with backoff, recover stale locks, and retain terminal state for 30 days. Resend receives a stable idempotency key; signed webhooks retain a stable delivery id. Slack is at-least-once when a timeout makes the remote outcome unknowable.
+Alert email, generic webhook, and Slack delivery run through a Postgres-backed outbox and Inngest. Meridian writes one job per recipient/destination in the same transaction as the alert lifecycle change, then sends Inngest only the job id and generation. Jobs survive failed event publishing, retry five total attempts with backoff, recover stale locks, and retain terminal state for 30 days. Resend receives a stable idempotency key; signed webhooks retain a stable delivery id. Slack is at-least-once when a timeout makes the remote outcome unknowable. A daily Inngest retention sweep prunes high-volume operational rows: raw workflow runs and metric samples default to 90 days, terminal jobs to 30 days, notification deliveries and poll executions to 90 days, audit logs to 365 days, and rate-limit buckets to 2 days.
+
+## Enterprise Usage Guardrails
+
+Workflow ingestion is protected by durable Postgres minute buckets: each ingestion token allows 60 accepted attempts per minute and each project allows 300 attempts per minute. Over-limit requests return `429` with a `Retry-After` header and a secret-safe message. Testing -> Project usage shows 30-day counts for workflow runs, metric samples, alerts, notification jobs/deliveries, report shares, active ingestion tokens, current rate limits, and retention policy summaries.
 
 Manual production setup:
 
@@ -259,6 +263,7 @@ Manual post-deploy checklist:
 - `/api/cron/poll` rejects a wrong bearer token.
 - Testing shows database, auth, encryption, cron, email provider readiness, latest poll status, and latest email delivery status.
 - Testing shows safe app version, commit, build time, and environment metadata.
+- Testing -> Project usage shows bounded usage counts, active token count, ingestion rate limits, and retention policy summaries without exposing tokens, webhook URLs, signing secrets, encrypted payloads, or env values.
 - Owner/admin test email from Testing returns clear success or failure feedback and does not expose `RESEND_API_KEY`.
 - Owner/admin manual poll run from Testing updates latest poll diagnostics without exposing `CRON_SECRET`.
 - Owner/admin workflow telemetry token creation shows the raw token once, token refresh lists only prefixes, revoke blocks future ingestion, and `/api/ingest/runs` rejects missing/wrong tokens.
@@ -300,4 +305,4 @@ npm run dev
 
 On first GitHub login, Meridian creates a personal organization and owner membership, then shows onboarding to confirm organization/project names and choose demo or blank setup.
 
-The app now includes project management, team invitation acceptance, member management, encrypted API credential storage, guided metric mapping tests, visible edit-mode map connection handles with editable link labels, focused basic/advanced integration templates, compact threshold/anomaly alert-rule management with baseline previews, signed outbound alert webhooks, native Slack incoming-webhook alerts, cron/manual polling, SSE-first live update signals with Control Room status and manual fallback, workflow run telemetry ingestion with hashed project tokens, secure client report links, bounded CSV exports, PNG map export, SDK previews, a deterministic demo metric source, real metric cards and trend charts from persisted samples/rollups, first-class Testing and Logs sections, contextual sidebar subsections, audit-backed safe operational logs, raw sample retention cleanup, in-app alerts, Resend email delivery logging/test flow/preferences, and small custom node icon uploads.
+The app now includes project management, team invitation acceptance, member management, encrypted API credential storage, guided metric mapping tests, visible edit-mode map connection handles with editable link labels, focused basic/advanced integration templates, compact threshold/anomaly alert-rule management with baseline previews, signed outbound alert webhooks, native Slack incoming-webhook alerts, cron/manual polling, SSE-first live update signals with Control Room status and manual fallback, workflow run telemetry ingestion with hashed project tokens and durable rate limits, secure client report links, bounded CSV exports, PNG map export, SDK previews, a deterministic demo metric source, real metric cards and trend charts from persisted samples/rollups, first-class Testing and Logs sections, contextual sidebar subsections, audit-backed safe operational logs, retention cleanup, in-app alerts, Resend email delivery logging/test flow/preferences, and small custom node icon uploads.

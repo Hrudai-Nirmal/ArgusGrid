@@ -176,6 +176,7 @@ model Project {
   reportPresets       ReportPreset[]
   alertRules          AlertRule[]
   notificationJobs    NotificationJob[]
+  rateLimitBuckets    IngestionRateLimitBucket[]
   auditLogs           AuditLog[]
   archivedAt          DateTime?
   createdAt           DateTime                    @default(now())
@@ -304,6 +305,22 @@ model IngestionToken {
   @@index([projectId, revokedAt])
   @@index([createdById])
   @@index([prefix])
+}
+
+model IngestionRateLimitBucket {
+  id          String   @id @default(cuid())
+  scopeType   String
+  scopeId     String
+  windowStart DateTime
+  count       Int      @default(0)
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([scopeType, scopeId, windowStart])
+  @@index([projectId, windowStart])
+  @@index([windowStart])
 }
 
 model ProjectWebhookDestination {

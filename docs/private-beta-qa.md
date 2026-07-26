@@ -70,6 +70,7 @@ Use this checklist for production validation on `https://meridian.hrudainirmal.i
 - Confirm the raw token is shown once and later lists only safe prefix metadata.
 - Revoke a disposable token and confirm future ingestion with it is rejected.
 - Post a valid `/api/ingest/runs` payload for a selected node.
+- Send repeated disposable telemetry quickly enough to hit the per-token limit; confirm over-limit requests return `429` and include a `Retry-After` header.
 - In Integrations, confirm telemetry templates show the `npm install @meridian-workflows/sdk` onboarding block with the selected node id and no real token value.
 - Run the JavaScript or Python SDK example script from `docs/sdk.md` against a disposable token.
 - Run `examples/live-workflow` in success, degraded, and failed modes against a disposable token.
@@ -140,6 +141,7 @@ Use this checklist for production validation on `https://meridian.hrudainirmal.i
 - Confirm any Preview/local runtime clearly shows non-production status and does not send email, Slack, webhooks, or endpoint polling unless explicitly opted in.
 - Queue email, webhook, and Slack tests; confirm the UI follows each job from queued to a terminal result.
 - In `Notification jobs`, verify counts, refresh, failed-job retry, queued/retrying cancellation, and owner/admin enforcement.
+- In `Project usage`, click Refresh usage and confirm 30-day counts, active ingestion token count, ingestion rate limits, and retention policy rows render without exposing secrets.
 - Use a failing disposable webhook and confirm retry progress before the job becomes failed.
 - Confirm Deployment readiness shows safe version, commit, build time, environment metadata, and `Database schema current`.
 - Run manual poll and confirm latest poll metadata updates.

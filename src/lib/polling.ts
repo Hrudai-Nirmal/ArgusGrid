@@ -7,6 +7,7 @@ import { createAndDispatchAlertEvent } from "@/lib/alert-events"
 import { normalizeAlertRuleMetadata, type AnomalyDirection } from "@/lib/alert-rule-metadata"
 import { decryptSecret } from "@/lib/crypto"
 import { getPrisma } from "@/lib/prisma"
+import { DEFAULT_RETENTION_POLICY_DAYS, getRetentionCutoff } from "@/lib/retention-policy.mjs"
 
 type JsonDocument = string | number | boolean | object | unknown[] | null
 
@@ -221,7 +222,7 @@ export async function runProjectPolling(options: { projectId?: string; force?: b
   let rollupsQueued = 0
   const errors: string[] = []
 
-  const retentionCutoff = new Date(checkedAt.getTime() - 14 * 24 * 60 * 60 * 1000)
+  const retentionCutoff = getRetentionCutoff(checkedAt, DEFAULT_RETENTION_POLICY_DAYS.metricSamples)
   const deletedSamples = (
     await prisma.metricSample.deleteMany({
       where: {

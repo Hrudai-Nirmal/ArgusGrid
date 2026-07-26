@@ -59,7 +59,7 @@ export function tokenFromRequest(request: Request) {
   return bearer || request.headers.get("x-meridian-token")?.trim() || request.headers.get("x-argusgrid-token")?.trim() || null
 }
 
-/** Authenticates an ingestion request and records successful token use. */
+/** Authenticates an ingestion request without recording successful use. */
 export async function authenticateIngestionRequest(request: Request) {
   const token = tokenFromRequest(request)
   if (!token) return null
@@ -76,13 +76,16 @@ export async function authenticateIngestionRequest(request: Request) {
 
   if (!tokenRecord || tokenRecord.revokedAt) return null
 
-  await prisma.ingestionToken.update({
-    where: { id: tokenRecord.id },
-    data: { lastUsedAt: new Date() },
-  })
-
   return {
     id: tokenRecord.id,
     projectId: tokenRecord.projectId,
   }
+}
+
+/** Records accepted ingestion token use after validation and rate-limit checks. */
+export async function markIngestionTokenUsed(prisma: { ingestionToken: { update: (args: { where: { id: string }; data: { lastUsedAt: Date } }) => Promise<unknown> } }, tokenId: string, usedAt = new Date()) {
+  await prisma.ingestionToken.update({
+    where: { id: tokenId },
+    data: { lastUsedAt: usedAt },
+  })
 }

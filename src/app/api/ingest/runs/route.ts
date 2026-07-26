@@ -2,7 +2,8 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 
 import { createAlertEventWithJobs } from "@/lib/alert-events"
-import { authenticateIngestionRequest } from "@/lib/ingestion-tokens"
+import { enforceIngestionRateLimit } from "@/lib/ingestion-rate-limits"
+import { authenticateIngestionRequest, markIngestionTokenUsed } from "@/lib/ingestion-tokens"
 import { dispatchNotificationJobs } from "@/lib/notification-jobs"
 import { getPrisma } from "@/lib/prisma"
 import { evaluateRunAlertRule, normalizeRunAlertMetadata } from "@/lib/run-alert-rules.mjs"
@@ -68,6 +69,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Node not found for this ingestion token." }, { status: 404 })
   }
 
+  const rateLimit = await enforceIngestionRateLimit(prisma, {
+    projectId: token.projectId,
+    tokenId: token.id,
+  })
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      {
+        error: "Workflow ingestion rate limit exceeded.",
+        scope: rateLimit.scopeType,
+        limit: rateLimit.limit,
+        retryAfterSeconds: rateLimit.retryAfterSeconds,
+      },
+      {
+        status: 429,
+        headers: { "Retry-After": String(rateLimit.retryAfterSeconds) },
+      }
+    )
+  }
+
   const runData = {
     externalId: parsed.data.externalId,
     status: parsed.data.status,
@@ -88,6 +108,8 @@ export async function POST(request: Request) {
   const statusReason = `Latest run ${parsed.data.status}${finishedCopy} at ${new Date().toISOString()}.`
 
   const transactionResult = await prisma.$transaction(async (transaction) => {
+    await markIngestionTokenUsed(transaction, token.id)
+
     const run = parsed.data.externalId
       ? await transaction.workflowRun.upsert({
           where: {
