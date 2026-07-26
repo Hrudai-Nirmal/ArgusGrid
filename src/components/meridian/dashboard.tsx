@@ -430,6 +430,22 @@ type ProjectUsageSnapshot = {
     summary: string
   }[]
 }
+type OperationalStatus = "ready" | "warning" | "blocked"
+type ProductionObservabilitySnapshot = {
+  status: OperationalStatus
+  checkedAt: string
+  summary: string
+  cards: {
+    id: string
+    title: string
+    status: OperationalStatus
+    value: string
+    detail: string
+    evidence: string[]
+    runbook: string
+  }[]
+  usage: ProjectUsageSnapshot
+}
 type IngestionTokenRecord = {
   id: string
   name: string
@@ -666,6 +682,7 @@ const sectionSubsections: Record<DashboardSection, { id: string; label: string; 
   ],
   testing: [
     { id: "testing-readiness", label: "Readiness" },
+    { id: "testing-observability", label: "Observability" },
     { id: "testing-jobs", label: "Notification jobs" },
     { id: "testing-usage", label: "Usage" },
     { id: "testing-polling", label: "Polling" },
@@ -994,6 +1011,8 @@ export function MeridianDashboard({
   const [notificationJobMessage, setNotificationJobMessage] = useState("")
   const [projectUsage, setProjectUsage] = useState<ProjectUsageSnapshot | null>(null)
   const [projectUsageMessage, setProjectUsageMessage] = useState("")
+  const [productionObservability, setProductionObservability] = useState<ProductionObservabilitySnapshot | null>(null)
+  const [productionObservabilityMessage, setProductionObservabilityMessage] = useState("")
   const [reportShares, setReportShares] = useState<ReportShareRecord[]>([])
   const [reportPresets, setReportPresets] = useState<ReportPresetRecord[]>([])
   const [selectedReportPresetId, setSelectedReportPresetId] = useState("")
@@ -1681,6 +1700,18 @@ export function MeridianDashboard({
     }
     setProjectUsage(payload.usage ?? null)
     setProjectUsageMessage("Project usage loaded for the last 30 days.")
+  }
+
+  const loadProductionObservability = async () => {
+    setProductionObservabilityMessage("Loading production observability...")
+    const response = await fetch(`/api/projects/${initialWorkspace.project.id}/operations/overview`)
+    const payload = await response.json().catch(() => null)
+    if (!response.ok) {
+      setProductionObservabilityMessage(payload?.error ?? "Production observability failed to load.")
+      return
+    }
+    setProductionObservability(payload.overview ?? null)
+    setProductionObservabilityMessage("Production observability loaded from the latest safe signals.")
   }
 
   const retryNotificationJob = async (jobId: string) => {
@@ -3513,6 +3544,8 @@ export function MeridianDashboard({
             notificationJobMessage={notificationJobMessage}
             projectUsage={projectUsage}
             projectUsageMessage={projectUsageMessage}
+            productionObservability={productionObservability}
+            productionObservabilityMessage={productionObservabilityMessage}
             selectedNode={selectedNode}
             canManageOrganization={canManageOrganization}
             canEditProject={canEditProject}
@@ -3524,6 +3557,7 @@ export function MeridianDashboard({
             onLoadSlackDestinations={loadSlackDestinations}
             onLoadNotificationJobs={loadNotificationJobs}
             onLoadProjectUsage={loadProjectUsage}
+            onLoadProductionObservability={loadProductionObservability}
             onRetryNotificationJob={retryNotificationJob}
             onCancelNotificationJob={cancelNotificationJob}
             onOpenMap={() => openDashboardSection("map")}
@@ -4008,6 +4042,18 @@ function ReadinessItem({ label, ready }: { label: string; ready: boolean }) {
       <Badge variant={ready ? "secondary" : "destructive"}>{ready ? "Ready" : "Missing"}</Badge>
     </div>
   )
+}
+
+function OperationalStatusBadge({ status }: { status: OperationalStatus }) {
+  const label = status === "ready" ? "Ready" : status === "warning" ? "Warning" : "Blocked"
+  const variant = status === "blocked" ? "destructive" : "outline"
+  const className = status === "ready"
+    ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200"
+    : status === "warning"
+      ? "border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-200"
+      : ""
+
+  return <Badge variant={variant} className={className}>{label}</Badge>
 }
 
 function BuildMetadataCard({ build }: { build: WorkspacePayload["diagnostics"]["build"] }) {
@@ -5817,6 +5863,8 @@ function TestingSection({
   notificationJobMessage,
   projectUsage,
   projectUsageMessage,
+  productionObservability,
+  productionObservabilityMessage,
   selectedNode,
   canManageOrganization,
   canEditProject,
@@ -5828,6 +5876,7 @@ function TestingSection({
   onLoadSlackDestinations,
   onLoadNotificationJobs,
   onLoadProjectUsage,
+  onLoadProductionObservability,
   onRetryNotificationJob,
   onCancelNotificationJob,
   onOpenMap,
@@ -5849,6 +5898,8 @@ function TestingSection({
   notificationJobMessage: string
   projectUsage: ProjectUsageSnapshot | null
   projectUsageMessage: string
+  productionObservability: ProductionObservabilitySnapshot | null
+  productionObservabilityMessage: string
   selectedNode?: EndpointNodeData
   canManageOrganization: boolean
   canEditProject: boolean
@@ -5860,6 +5911,7 @@ function TestingSection({
   onLoadSlackDestinations: () => Promise<void>
   onLoadNotificationJobs: () => Promise<void>
   onLoadProjectUsage: () => Promise<void>
+  onLoadProductionObservability: () => Promise<void>
   onRetryNotificationJob: (jobId: string) => Promise<void>
   onCancelNotificationJob: (jobId: string) => Promise<void>
   onOpenMap: () => void
@@ -5884,6 +5936,52 @@ function TestingSection({
             </div>
             <BuildMetadataCard build={diagnostics.build} />
             <RuntimeSafetyCard diagnostics={diagnostics} />
+          </div>
+        </details>
+
+        <details id="testing-observability" open className="rounded-lg border bg-background">
+          <summary className="cursor-pointer px-5 py-4 font-semibold">Production observability</summary>
+          <div className="grid gap-4 px-5 pb-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="sm" variant="outline" onClick={onLoadProductionObservability} disabled={!canManageOrganization}>
+                Refresh overview
+              </Button>
+              {productionObservability ? <OperationalStatusBadge status={productionObservability.status} /> : null}
+              <Badge variant="outline">Ready</Badge>
+              <Badge variant="outline">Warning</Badge>
+              <Badge variant="outline">Blocked</Badge>
+              {productionObservabilityMessage ? <span className="text-xs text-muted-foreground">{productionObservabilityMessage}</span> : null}
+            </div>
+            {productionObservability ? (
+              <>
+                <div className="rounded-lg border bg-muted/20 p-3 text-sm">
+                  <div className="font-medium">{productionObservability.summary}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">Checked {formatDateTime(productionObservability.checkedAt)} using safe health, usage, polling, and job signals.</div>
+                </div>
+                <div className="grid gap-3 lg:grid-cols-2">
+                  {productionObservability.cards.map((card) => (
+                    <div key={card.id} className="rounded-lg border p-3 text-sm">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="font-medium">{card.title}</div>
+                        <OperationalStatusBadge status={card.status} />
+                      </div>
+                      <div className="mt-2 text-lg font-semibold">{card.value}</div>
+                      <div className="mt-1 text-xs text-muted-foreground">{card.detail}</div>
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {card.evidence.slice(0, 4).map((item) => (
+                          <Badge key={item} variant="secondary" className="font-mono text-[10px]">{item}</Badge>
+                        ))}
+                      </div>
+                      <div className="mt-2 text-xs text-muted-foreground">Runbook: {card.runbook}</div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                Refresh overview to classify production dependencies, runtime policy, poll freshness, durable job pressure, and ingestion guardrails.
+              </div>
+            )}
           </div>
         </details>
 

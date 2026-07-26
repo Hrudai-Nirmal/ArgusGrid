@@ -139,6 +139,8 @@ Use this checklist for production validation on `https://meridian.hrudainirmal.i
 - Confirm readiness cards show database connectivity, database schema, auth, encryption, cron, email, Inngest jobs, and poll status.
 - Confirm runtime safety shows Production on `https://meridian.hrudainirmal.in` with external side effects, background jobs, and cron enabled.
 - Confirm any Preview/local runtime clearly shows non-production status and does not send email, Slack, webhooks, or endpoint polling unless explicitly opted in.
+- In `Production observability`, click Refresh overview and confirm Ready/Warning/Blocked cards render for dependencies, runtime safety, polling, notification jobs, and usage guardrails.
+- Confirm `Production observability` evidence and runbook labels are secret-safe and that non-owner/admin roles cannot load the overview route.
 - Queue email, webhook, and Slack tests; confirm the UI follows each job from queued to a terminal result.
 - In `Notification jobs`, verify counts, refresh, failed-job retry, queued/retrying cancellation, and owner/admin enforcement.
 - In `Project usage`, click Refresh usage and confirm 30-day counts, active ingestion token count, ingestion rate limits, and retention policy rows render without exposing secrets.

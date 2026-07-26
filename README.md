@@ -165,6 +165,10 @@ Alert email, generic webhook, and Slack delivery run through a Postgres-backed o
 
 Workflow ingestion is protected by durable Postgres minute buckets: each ingestion token allows 60 accepted attempts per minute and each project allows 300 attempts per minute. Over-limit requests return `429` with a `Retry-After` header and a secret-safe message. Testing -> Project usage shows 30-day counts for workflow runs, metric samples, alerts, notification jobs/deliveries, report shares, active ingestion tokens, current rate limits, and retention policy summaries.
 
+## Production Observability
+
+Owners/admins can open `Testing` -> `Production observability` and refresh a secret-safe operations overview for the current project. The overview classifies existing signals as `Ready`, `Warning`, or `Blocked` across core dependencies, runtime safety, poll freshness, durable notification jobs, and ingestion usage guardrails. It is backed by `GET /api/projects/[projectId]/operations/overview`, which returns safe cards, evidence labels, and runbook paths only; it must never expose database URLs, OAuth secrets, encryption keys, cron secrets, email keys, Slack/webhook URLs, signing secrets, raw ingestion tokens, or encrypted payloads.
+
 Manual production setup:
 
 1. Create a production environment and `Meridian` app in Inngest.
