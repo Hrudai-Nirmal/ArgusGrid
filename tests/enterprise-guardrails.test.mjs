@@ -67,6 +67,16 @@ test("Inngest exposes a retention cleanup sweep", async () => {
   assert.match(pollingSource, /DEFAULT_RETENTION_POLICY_DAYS\.metricSamples/)
 })
 
+test("idle background schedules avoid minute-by-minute database wakeups", async () => {
+  const functionsSource = await readFile("src/inngest/functions.ts", "utf8")
+  const readme = await readFile("README.md", "utf8")
+
+  assert.match(functionsSource, /recover-queued-notifications/)
+  assert.match(functionsSource, /cron:\s*"\*\/15 \* \* \* \*"/)
+  assert.doesNotMatch(functionsSource, /cron:\s*"\* \* \* \* \*"/)
+  assert.match(readme, /Every-minute cron keeps the database compute warm/i)
+})
+
 test("Testing UI exposes project usage and guardrail evidence", async () => {
   const dashboard = await readFile("src/components/meridian/dashboard.tsx", "utf8")
   const usageRoute = await readFile("src/app/api/projects/[projectId]/usage/route.ts", "utf8")

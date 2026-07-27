@@ -52,7 +52,7 @@ Run production migrations with:
 npm run prisma:deploy
 ```
 
-Vercel cron is configured in `vercel.json` to call `/api/cron/poll` daily as a backup for Hobby-compatible limits. The primary high-frequency scheduler can be one Meridian-owned cron-job.org job that calls the same route every minute. The route requires `CRON_SECRET` and accepts either:
+Vercel cron is configured in `vercel.json` to call `/api/cron/poll` daily as a backup for Hobby-compatible limits. The primary high-frequency scheduler can be one Meridian-owned cron-job.org job that calls the same route every minute when active production metric polling is needed. Every-minute cron keeps the database compute warm and should stay disabled during idle/private-beta cost-control periods. The route requires `CRON_SECRET` and accepts either:
 
 - `Authorization: Bearer <CRON_SECRET>`
 - HTTP Basic auth with username `meridian-cron` and password `<CRON_SECRET>`
@@ -68,7 +68,7 @@ HTTP auth username: meridian-cron
 HTTP auth password: production CRON_SECRET
 ```
 
-After creating the job, run a manual test execution in cron-job.org and expect HTTP 200 with `ok: true` and `mode: "secured-cron"`. The scheduler checks every minute, but each endpoint is claimed only when its configured cadence is due; an idle tick returns `status: "SKIPPED"` without adding poll history. Then confirm Testing and `/api/health` show updated latest completed poll metadata.
+After creating the job, run a manual test execution in cron-job.org and expect HTTP 200 with `ok: true` and `mode: "secured-cron"`. The scheduler checks every minute, but each endpoint is claimed only when its configured cadence is due; an idle tick returns `status: "SKIPPED"` without adding poll history. It can still wake Neon compute, so disable the cron-job.org job when no pilots require continuous metric polling. Then confirm Testing and `/api/health` show updated latest completed poll metadata.
 
 The deployed app exposes `/api/health` for safe readiness checks. It returns booleans and poll metadata only; it must never return secret values.
 
@@ -161,7 +161,7 @@ Native Slack alert destinations also live in `Integrations`, using Slack incomin
 
 ## Durable Notification Jobs
 
-Alert email, generic webhook, and Slack delivery run through a Postgres-backed outbox and Inngest. Meridian writes one job per recipient/destination in the same transaction as the alert lifecycle change, then sends Inngest only the job id and generation. Jobs survive failed event publishing, retry five total attempts with backoff, recover stale locks, and retain terminal state for 30 days. Resend receives a stable idempotency key; signed webhooks retain a stable delivery id. Slack is at-least-once when a timeout makes the remote outcome unknowable. A daily Inngest retention sweep prunes high-volume operational rows: raw workflow runs and metric samples default to 90 days, terminal jobs to 30 days, notification deliveries and poll executions to 90 days, audit logs to 365 days, and rate-limit buckets to 2 days.
+Alert email, generic webhook, and Slack delivery run through a Postgres-backed outbox and Inngest. Meridian writes one job per recipient/destination in the same transaction as the alert lifecycle change, then sends Inngest only the job id and generation. Jobs survive failed event publishing, retry five total attempts with backoff, recover stale locks, and retain terminal state for 30 days. Resend receives a stable idempotency key; signed webhooks retain a stable delivery id. Slack is at-least-once when a timeout makes the remote outcome unknowable. The notification recovery sweep runs every 15 minutes to reduce idle database wakeups; direct Inngest job events still process immediately when dispatch succeeds. A daily Inngest retention sweep prunes high-volume operational rows: raw workflow runs and metric samples default to 90 days, terminal jobs to 30 days, notification deliveries and poll executions to 90 days, audit logs to 365 days, and rate-limit buckets to 2 days.
 
 ## Enterprise Usage Guardrails
 

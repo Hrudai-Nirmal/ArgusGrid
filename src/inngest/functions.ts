@@ -28,7 +28,7 @@ export const processNotificationJob = inngest.createFunction(
 export const recoverQueuedNotifications = inngest.createFunction(
   {
     id: "recover-queued-notifications",
-    triggers: { cron: "* * * * *" },
+    triggers: { cron: "*/15 * * * *" },
     retries: 2,
   },
   async ({ step }) => step.run("recover-notification-outbox", recoverNotificationJobs)
