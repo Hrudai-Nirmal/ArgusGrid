@@ -175,6 +175,13 @@ Use this checklist for production validation on `https://meridian.hrudainirmal.i
 - Confirm members/viewers cannot create generic webhook destinations, Slack destinations, telemetry tokens, report links, report presets, CSV exports, project edits, or team invites.
 - Confirm members can still edit map/nodes/API metric setup and alert rules where the matrix says allowed.
 
+## Security Hardening
+
+- Confirm `/` and `/api/health` include browser security headers: `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, and `X-Frame-Options`.
+- Confirm public report pages and report image routes are no-store, revoked/expired links return 404, and report pages never show private team data.
+- Confirm owner/admin-only routes reject member/viewer access for telemetry tokens, webhooks, Slack destinations, report shares, report presets, CSV exports, manual polling, notification-job retry/cancel, and production observability.
+- Confirm logs, reports, exports, observability, and onboarding snippets do not expose raw tokens, webhook URLs, Slack URLs, signing secrets, encrypted payloads, database URLs, OAuth secrets, cron secrets, email provider keys, or env values.
+
 ## Settings
 
 - Confirm Settings is configuration-only.

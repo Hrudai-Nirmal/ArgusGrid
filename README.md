@@ -169,6 +169,10 @@ Workflow ingestion is protected by durable Postgres minute buckets: each ingesti
 
 Owners/admins can open `Testing` -> `Production observability` and refresh a secret-safe operations overview for the current project. The overview classifies existing signals as `Ready`, `Warning`, or `Blocked` across core dependencies, runtime safety, poll freshness, durable notification jobs, and ingestion usage guardrails. It is backed by `GET /api/projects/[projectId]/operations/overview`, which returns safe cards, evidence labels, and runbook paths only; it must never expose database URLs, OAuth secrets, encryption keys, cron secrets, email keys, Slack/webhook URLs, signing secrets, raw ingestion tokens, or encrypted payloads.
 
+## Security And Access Hardening
+
+Enterprise pilot builds apply baseline browser security headers through `next.config.ts`: `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `X-Frame-Options`, and HSTS. Public report routes remain token-scoped, revoked/expired reports return 404, and report pages/assets are configured as no-store. Production smoke verifies the main app shell and `/api/health` include the expected browser hardening headers. Owner/admin-only routes cover telemetry-token management, webhook/Slack destinations, report shares/presets, CSV exports, manual polling, notification-job retry/cancel, and production observability.
+
 Manual production setup:
 
 1. Create a production environment and `Meridian` app in Inngest.

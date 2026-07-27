@@ -24,11 +24,22 @@ function assertAuthenticationGuard(response, message) {
   assert(expectedStatuses.includes(response.status()), message)
 }
 
+function assertSecurityHeaders(response, label) {
+  const headers = response.headers()
+  assert(headers["x-content-type-options"] === "nosniff", `${label} is missing X-Content-Type-Options: nosniff.`)
+  assert(headers["referrer-policy"] === "strict-origin-when-cross-origin", `${label} is missing strict Referrer-Policy.`)
+  assert(headers["permissions-policy"]?.includes("camera=()"), `${label} is missing Permissions-Policy camera denial.`)
+  assert(headers["permissions-policy"]?.includes("microphone=()"), `${label} is missing Permissions-Policy microphone denial.`)
+  assert(headers["x-frame-options"] === "SAMEORIGIN", `${label} is missing X-Frame-Options: SAMEORIGIN.`)
+}
+
 const browser = await chromium.launch({ headless: true })
 
 try {
   const publicPage = await browser.newPage({ viewport: { width: 1440, height: 900 } })
-  await publicPage.goto(baseUrl, { waitUntil: "networkidle" })
+  const publicResponse = await publicPage.goto(baseUrl, { waitUntil: "networkidle" })
+  assert(publicResponse, "Public app shell did not return a response.")
+  assertSecurityHeaders(publicResponse, "Public app shell")
   const publicText = await publicPage.textContent("body")
   assert(
     publicText?.includes("Sign in to Meridian") ||
@@ -41,6 +52,7 @@ try {
   assert(!overflow, "Public page has horizontal overflow at 1440px.")
 
   const healthResponse = await publicPage.request.get(`${baseUrl}/api/health`)
+  assertSecurityHeaders(healthResponse, "Health route")
   const health = await json(healthResponse)
   assert(health && typeof health.ok === "boolean", "Health route did not return safe readiness JSON.")
   assert(typeof health?.build?.version === "string" && health.build.version.length > 0, "Health route did not return app version metadata.")
