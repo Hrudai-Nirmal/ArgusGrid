@@ -36,6 +36,7 @@ import {
   KeyRound,
   LayoutGrid,
   LayoutDashboard,
+  LogOut,
   MailCheck,
   MessageSquare,
   Moon,
@@ -52,6 +53,7 @@ import {
   Sparkles,
   Sun,
   Trash2,
+  UserRound,
   Users,
   Wand2,
 } from "lucide-react"
@@ -94,6 +96,7 @@ import {
 } from "@/lib/meridian-data"
 import { integrationTemplates, type IntegrationTemplate } from "@/lib/integration-templates"
 import { buildIntegrationWizardSteps, buildProviderSetupCopy } from "@/lib/integration-wizard.mjs"
+import { buildPilotOnboardingChecklist } from "@/lib/pilot-onboarding.mjs"
 import { buildProviderFirstSignalStatus, getProviderOnboardingCopy } from "@/lib/provider-onboarding.mjs"
 import { buildRestMetricOnboardingStatus } from "@/lib/rest-metric-onboarding.mjs"
 import { formatSafeMetadata } from "@/lib/safe-metadata-format.mjs"
@@ -389,7 +392,7 @@ type ProjectAlert = WorkspacePayload["alerts"][number]
 type ProjectAlertRule = WorkspacePayload["alertRules"][number]
 type AlertTimelineFilter = "24h" | "7d" | "30d" | "all"
 type LiveConnectionState = "connecting" | "live" | "reconnecting" | "manual"
-type DashboardSection = "control-room" | "projects" | "map" | "runs" | "alerts" | "reports" | "integrations" | "testing" | "logs" | "team" | "settings"
+type DashboardSection = "control-room" | "projects" | "map" | "runs" | "alerts" | "reports" | "integrations" | "testing" | "logs" | "team" | "settings" | "account"
 type ProjectLogType = "activity" | "alerts" | "polling" | "deliveries" | "runs" | "reports" | "webhooks" | "team" | "map"
 type ProjectLogWindow = "24h" | "7d" | "30d" | "all"
 type NotificationJobStatus = "QUEUED" | "RUNNING" | "RETRYING" | "SENT" | "FAILED" | "SKIPPED" | "CANCELLED"
@@ -645,6 +648,13 @@ const dashboardSections: {
     description: "Configuration for notifications, webhooks, telemetry, and project environment.",
     icon: Settings,
   },
+  {
+    id: "account",
+    label: "Account",
+    title: "Account",
+    description: "Signed-in identity, workspace context, and account actions.",
+    icon: UserRound,
+  },
 ]
 
 const sectionSubsections: Record<DashboardSection, { id: string; label: string; logType?: ProjectLogType }[]> = {
@@ -711,6 +721,10 @@ const sectionSubsections: Record<DashboardSection, { id: string; label: string; 
     { id: "settings-webhooks", label: "Webhooks" },
     { id: "settings-tokens", label: "Telemetry tokens" },
     { id: "settings-environment", label: "Environment" },
+  ],
+  account: [
+    { id: "account-profile", label: "Profile" },
+    { id: "account-session", label: "Session" },
   ],
 }
 
@@ -1133,6 +1147,22 @@ export function MeridianDashboard({
   const activeReportCount = useMemo(
     () => reportShares.filter((share) => !share.revokedAt).length,
     [reportShares]
+  )
+  const pilotOnboardingChecklist = useMemo(
+    () =>
+      buildPilotOnboardingChecklist({
+        hasProject: Boolean(initialWorkspace.project.id),
+        nodeCount: endpointNodes.length,
+        hasIntegrationSetup:
+          endpointNodes.some((node) => node.parameters.some((parameter) => parameter.id)) ||
+          projectRuns.length > 0 ||
+          projectMetrics.length > 0,
+        realRunCount: projectRuns.length,
+        realMetricCount: projectMetrics.length,
+        alertRuleCount: alertRules.length,
+        activeReportCount,
+      }),
+    [activeReportCount, alertRules.length, endpointNodes, initialWorkspace.project.id, projectMetrics.length, projectRuns.length]
   )
   const firstWorkflowTutorialEvidence = useMemo<TutorialEvidence>(
     () => ({
@@ -1750,6 +1780,24 @@ export function MeridianDashboard({
   const copyText = async (value: string, successMessage: string) => {
     await navigator.clipboard.writeText(value)
     setIngestionTokenMessage(successMessage)
+  }
+
+  const copyPilotSetupPacket = async () => {
+    const targetNode = selectedNode ?? endpointNodes[0]
+    const packet = [
+      `Meridian setup packet`,
+      `Project: ${initialWorkspace.project.name}`,
+      `Project ID: ${initialWorkspace.project.id}`,
+      targetNode ? `Node: ${targetNode.label}` : "Node: create one in Automation Map",
+      targetNode ? `Node ID: ${targetNode.id}` : "Node ID: add/select a node first",
+      `Base URL: ${window.location.origin}`,
+      `JavaScript SDK: ${buildSdkInstallCommand()}`,
+      `Next step: open Integrations, create a disposable telemetry token, then send one SDK/API/Dify/n8n test signal.`,
+      `Security note: Meridian shows full telemetry tokens only once at creation. Do not paste tokens into reports, logs, or shared docs.`,
+    ].join("\n")
+
+    await navigator.clipboard.writeText(packet)
+    setActionMessage("Safe setup packet copied. It does not include token values or secrets.")
   }
 
   const loadIngestionTokens = async () => {
@@ -3207,8 +3255,9 @@ export function MeridianDashboard({
                 Open map
               </Button>
             )}
-            <Button variant="ghost" onClick={() => signOut({ callbackUrl: "/" })}>
-              Sign out
+            <Button variant="ghost" onClick={() => openDashboardSection("account")}>
+              <UserRound data-icon="inline-start" />
+              Account
             </Button>
           </div>
           {actionMessage ? <div className="text-xs text-muted-foreground">{actionMessage}</div> : null}
@@ -3404,6 +3453,7 @@ export function MeridianDashboard({
             projectRuns={projectRuns}
             projectMetrics={projectMetrics}
             projectSummary={projectSummary}
+            pilotOnboardingChecklist={pilotOnboardingChecklist}
             liveConnectionState={liveConnectionState}
             liveCheckedAt={liveCheckedAt}
             liveChangedAreas={liveChangedAreas}
@@ -3411,6 +3461,7 @@ export function MeridianDashboard({
             onRefreshProject={refreshProjectData}
             onOpenSection={openDashboardSection}
             onStartTutorial={openFirstWorkflowTutorial}
+            onCopySetupPacket={copyPilotSetupPacket}
             onSelectNode={(nodeId) => {
               setSelectedId(nodeId)
               openDashboardSection("map")
@@ -3605,6 +3656,14 @@ export function MeridianDashboard({
             onUpdateMemberRole={updateMemberRole}
             onRemoveMember={removeMember}
             onCancelInvitation={cancelInvitation}
+          />
+        ) : activeSection === "account" ? (
+          <AccountSection
+            currentUser={currentUser}
+            organization={initialWorkspace.organization}
+            project={initialWorkspace.project}
+            onOpenTeam={() => openDashboardSection("team")}
+            onOpenSettings={() => openDashboardSection("settings")}
           />
         ) : (
           <SettingsSection
@@ -4270,6 +4329,7 @@ function ControlRoomSection({
   projectRuns,
   projectMetrics,
   projectSummary,
+  pilotOnboardingChecklist,
   liveConnectionState,
   liveCheckedAt,
   liveChangedAreas,
@@ -4277,6 +4337,7 @@ function ControlRoomSection({
   onRefreshProject,
   onOpenSection,
   onStartTutorial,
+  onCopySetupPacket,
   onSelectNode,
 }: {
   nodes: EndpointNodeData[]
@@ -4293,6 +4354,7 @@ function ControlRoomSection({
     latestSampledAt: string | null
     staleNodes: EndpointNodeData[]
   }
+  pilotOnboardingChecklist: ReturnType<typeof buildPilotOnboardingChecklist>
   liveConnectionState: LiveConnectionState
   liveCheckedAt: string | null
   liveChangedAreas: string[]
@@ -4300,6 +4362,7 @@ function ControlRoomSection({
   onRefreshProject: () => Promise<void>
   onOpenSection: (section: DashboardSection) => void
   onStartTutorial: () => void
+  onCopySetupPacket: () => Promise<void>
   onSelectNode: (nodeId: string) => void
 }) {
   const attentionItems = [
@@ -4436,6 +4499,52 @@ function ControlRoomSection({
           </Card>
 
           <div className="grid gap-5">
+            <Card>
+              <CardHeader className="flex flex-row items-start justify-between gap-3">
+                <div>
+                  <CardTitle>Pilot setup checklist</CardTitle>
+                  <CardDescription>Evidence-based first workflow path for a new beta user.</CardDescription>
+                </div>
+                <Badge variant="secondary">
+                  {pilotOnboardingChecklist.completedCount}/{pilotOnboardingChecklist.totalCount}
+                </Badge>
+              </CardHeader>
+              <CardContent className="grid gap-3">
+                <div className="grid gap-2">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Setup progress</span>
+                    <span>{pilotOnboardingChecklist.percentComplete}%</span>
+                  </div>
+                  <Progress value={pilotOnboardingChecklist.percentComplete} />
+                </div>
+                <div className="grid gap-2">
+                  {pilotOnboardingChecklist.items.map((item) => (
+                    <button
+                      key={item.id}
+                      className="grid gap-1 rounded-lg border bg-background p-3 text-left text-sm transition hover:bg-muted/40"
+                      onClick={() => onOpenSection(item.section as DashboardSection)}
+                    >
+                      <span className="flex items-center gap-2 font-medium">
+                        <CheckCircle2 className={cn("size-4", item.completed ? "text-emerald-500" : "text-muted-foreground")} />
+                        {item.label}
+                      </span>
+                      <span className="text-xs text-muted-foreground">{item.detail}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={() => onOpenSection(pilotOnboardingChecklist.nextActionSection as DashboardSection)}>
+                    <Sparkles data-icon="inline-start" />
+                    {pilotOnboardingChecklist.nextActionLabel}
+                  </Button>
+                  <Button variant="outline" onClick={onCopySetupPacket}>
+                    <Copy data-icon="inline-start" />
+                    Copy setup packet
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader className="flex flex-row items-start justify-between gap-3">
                 <div>
@@ -6328,6 +6437,79 @@ function LogsSection({
             </Card>
           )}
         </div>
+      </div>
+    </SectionShell>
+  )
+}
+
+function AccountSection({
+  currentUser,
+  organization,
+  project,
+  onOpenTeam,
+  onOpenSettings,
+}: {
+  currentUser: NonNullable<Session["user"]>
+  organization: WorkspacePayload["organization"]
+  project: WorkspacePayload["project"]
+  onOpenTeam: () => void
+  onOpenSettings: () => void
+}) {
+  const displayName = currentUser.name ?? currentUser.email ?? "GitHub user"
+  const displayEmail = currentUser.email ?? "Email unavailable"
+
+  return (
+    <SectionShell>
+      <div className="mx-auto grid max-w-4xl gap-5">
+        <Card id="account-profile">
+          <CardHeader>
+            <CardTitle>Account management</CardTitle>
+            <CardDescription>Manage your signed-in Meridian identity and workspace context.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-muted/20 p-4">
+              <div className="grid size-12 place-items-center rounded-xl bg-primary text-primary-foreground">
+                <UserRound className="size-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="truncate font-semibold">{displayName}</div>
+                <div className="truncate text-sm text-muted-foreground">{displayEmail}</div>
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-lg border bg-background p-3">
+                <div className="text-xs text-muted-foreground">Organization</div>
+                <div className="mt-1 font-medium">{organization.name}</div>
+              </div>
+              <div className="rounded-lg border bg-background p-3">
+                <div className="text-xs text-muted-foreground">Current project</div>
+                <div className="mt-1 font-medium">{project.name}</div>
+                <div className="mt-1 font-mono text-xs text-muted-foreground">{project.slug}</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card id="account-session">
+          <CardHeader>
+            <CardTitle>Session and access</CardTitle>
+            <CardDescription>Account actions live here so the main header stays focused on operations.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={onOpenTeam}>
+              <Users data-icon="inline-start" />
+              Manage team access
+            </Button>
+            <Button variant="outline" onClick={onOpenSettings}>
+              <Settings data-icon="inline-start" />
+              Open configuration
+            </Button>
+            <Button variant="destructive" onClick={() => signOut({ callbackUrl: "/" })}>
+              <LogOut data-icon="inline-start" />
+              Sign out
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </SectionShell>
   )

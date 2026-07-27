@@ -16,6 +16,11 @@ Use this checklist for production validation on `https://meridian.hrudainirmal.i
 - New-user onboarding can create a blank project.
 - New-user onboarding can create the demo project.
 - Returning users land in the dashboard without repeated onboarding.
+- Control Room shows the pilot setup checklist with project, node, integration, real signal, alert rule, and client proof steps.
+- Confirm the checklist does not mark `First real signal received` complete until a persisted workflow run or metric sample exists.
+- Click `Copy setup packet` and confirm it copies project/node setup details and SDK install guidance without raw tokens, webhook URLs, Slack URLs, signing secrets, encrypted payloads, or env values.
+- Confirm the dashboard header does not show `Sign out`.
+- Open `Account`, confirm signed-in identity, organization, current project, Team/Settings shortcuts, and the only visible `Sign out` action.
 - `/api/health` returns safe readiness JSON without raw secret values.
 - `/api/health` includes safe version, commit, build time, and environment metadata.
 - `/api/health` includes runtime metadata for Production/Preview/Local, deployment URL, side-effect policy, background-job policy, cron policy, and safe warnings.
