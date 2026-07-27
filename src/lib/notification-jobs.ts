@@ -303,22 +303,26 @@ export async function markNotificationJobFailed(jobId: string, generation: numbe
 }
 
 /** Recovers publish failures and stale locks, and prunes old terminal job state. */
-export async function recoverNotificationJobs() {
+export async function recoverNotificationJobs(input: { projectId?: string } = {}) {
   const prisma = getPrisma()
   const staleBefore = new Date(Date.now() - STALE_LOCK_MS)
   await prisma.notificationJob.updateMany({
-    where: { status: "RUNNING", lockedAt: { lt: staleBefore } },
+    where: { status: "RUNNING", lockedAt: { lt: staleBefore }, ...(input.projectId ? { projectId: input.projectId } : {}) },
     data: { status: "RETRYING", generation: { increment: 1 }, lockedAt: null, lastError: "Recovered after a stale worker lock." },
   })
   const jobs = await prisma.notificationJob.findMany({
-    where: { status: { in: ACTIVE_JOB_STATUSES } },
+    where: { status: { in: ACTIVE_JOB_STATUSES }, ...(input.projectId ? { projectId: input.projectId } : {}) },
     orderBy: { createdAt: "asc" },
     take: 100,
     select: { id: true, generation: true },
   })
   await dispatchNotificationJobs(jobs)
   await prisma.notificationJob.deleteMany({
-    where: { status: { in: TERMINAL_JOB_STATUSES }, completedAt: { lt: new Date(Date.now() - TERMINAL_RETENTION_MS) } },
+    where: {
+      status: { in: TERMINAL_JOB_STATUSES },
+      completedAt: { lt: new Date(Date.now() - TERMINAL_RETENTION_MS) },
+      ...(input.projectId ? { projectId: input.projectId } : {}),
+    },
   })
   return { recovered: jobs.length }
 }

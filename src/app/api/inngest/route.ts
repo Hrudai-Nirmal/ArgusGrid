@@ -5,14 +5,14 @@ import { serve } from "inngest/next"
 import type { NextRequest } from "next/server"
 
 import { inngest } from "@/inngest/client"
-import { cleanupOperationalRetention, processNotificationJob, recoverQueuedNotifications } from "@/inngest/functions"
+import { getActiveInngestFunctions } from "@/inngest/functions"
 import { canRunBackgroundJobs, getRuntimeEnvironment } from "@/lib/runtime-environment"
 
 export const maxDuration = 60
 
 const handlers = serve({
   client: inngest,
-  functions: [processNotificationJob, recoverQueuedNotifications, cleanupOperationalRetention],
+  functions: getActiveInngestFunctions(),
 })
 
 function isProductionWorkerConfigured() {

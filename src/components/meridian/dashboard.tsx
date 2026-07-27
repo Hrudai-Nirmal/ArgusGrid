@@ -129,6 +129,7 @@ const GRAPH_GRID_SIZE = 22
 const REPORT_BRAND_IMAGE_MAX_BYTES = 256 * 1024
 const SIDEBAR_FADE_MS = 140
 const LIVE_STALE_AFTER_MS = 60_000
+const LIVE_SESSION_TIMEOUT_MS = 10 * 60_000
 
 type ApiSetupHelpField =
   | "overview"
@@ -693,6 +694,7 @@ const sectionSubsections: Record<DashboardSection, { id: string; label: string; 
   testing: [
     { id: "testing-readiness", label: "Readiness" },
     { id: "testing-observability", label: "Observability" },
+    { id: "testing-idle-posture", label: "Idle posture" },
     { id: "testing-jobs", label: "Notification jobs" },
     { id: "testing-usage", label: "Usage" },
     { id: "testing-polling", label: "Polling" },
@@ -745,8 +747,7 @@ function getInitialTheme(): "light" | "dark" {
 }
 
 function getInitialLiveConnectionState(): LiveConnectionState {
-  if (typeof window === "undefined") return "connecting"
-  return typeof window.EventSource === "undefined" ? "manual" : "connecting"
+  return "manual"
 }
 
 function getInitialFirstWorkflowTutorialEvidence(workspace: WorkspacePayload) {
@@ -904,7 +905,7 @@ function formatChangedAreas(changedAreas: string[]) {
 }
 
 function getLiveConnectionDetail(state: LiveConnectionState, checkedAt: string | null, changedAreas: string[]) {
-  if (state === "manual") return "Browser live stream unavailable; use manual refresh."
+  if (state === "manual") return "Manual refresh mode; click Go live only when you need temporary live updates."
   if (state === "connecting") return "Opening project event stream."
   if (state === "reconnecting") return checkedAt ? `${formatLiveCheckedAt(checkedAt)}; reconnecting.` : "Reconnecting to project events."
   return `${formatLiveCheckedAt(checkedAt)} / ${formatChangedAreas(changedAreas)}`
@@ -989,6 +990,7 @@ export function MeridianDashboard({
   const [latestEmail, setLatestEmail] = useState(initialWorkspace.diagnostics.latestEmail)
   const [pollMessage, setPollMessage] = useState("")
   const [isRefreshingProject, setIsRefreshingProject] = useState(false)
+  const [liveModeEnabled, setLiveModeEnabled] = useState(false)
   const [liveConnectionState, setLiveConnectionState] = useState<LiveConnectionState>(getInitialLiveConnectionState)
   const [liveCheckedAt, setLiveCheckedAt] = useState<string | null>(null)
   const [liveChangedAreas, setLiveChangedAreas] = useState<string[]>([])
@@ -1023,6 +1025,7 @@ export function MeridianDashboard({
   const [notificationJobs, setNotificationJobs] = useState<NotificationJobRecord[]>([])
   const [notificationJobCounts, setNotificationJobCounts] = useState<Record<string, number>>({})
   const [notificationJobMessage, setNotificationJobMessage] = useState("")
+  const [idleActionMessage, setIdleActionMessage] = useState("")
   const [projectUsage, setProjectUsage] = useState<ProjectUsageSnapshot | null>(null)
   const [projectUsageMessage, setProjectUsageMessage] = useState("")
   const [productionObservability, setProductionObservability] = useState<ProductionObservabilitySnapshot | null>(null)
@@ -1051,8 +1054,10 @@ export function MeridianDashboard({
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const liveReconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const liveStaleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const liveSessionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const sidebarTransitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const liveEventSourceRef = useRef<EventSource | null>(null)
+  const liveModeEnabledRef = useRef(false)
   const liveRefreshInFlightRef = useRef(false)
   const iconInputRef = useRef<HTMLInputElement | null>(null)
   const canManageOrganization = initialWorkspace.currentUserRole === "OWNER" || initialWorkspace.currentUserRole === "ADMIN"
@@ -1068,6 +1073,9 @@ export function MeridianDashboard({
     return () => {
       if (sidebarTransitionTimerRef.current) {
         clearTimeout(sidebarTransitionTimerRef.current)
+      }
+      if (liveSessionTimerRef.current) {
+        clearTimeout(liveSessionTimerRef.current)
       }
     }
   }, [])
@@ -1309,11 +1317,38 @@ export function MeridianDashboard({
     document.getElementById(subsection.id)?.scrollIntoView({ behavior: "smooth", block: "start" })
   }
 
+  const startLiveMode = useCallback(() => {
+    if (typeof window === "undefined" || typeof window.EventSource === "undefined") {
+      setLiveConnectionState("manual")
+      return
+    }
+
+    liveModeEnabledRef.current = true
+    setLiveModeEnabled(true)
+    setLiveConnectionState("connecting")
+  }, [])
+
+  const pauseLiveMode = useCallback(() => {
+    liveModeEnabledRef.current = false
+    setLiveModeEnabled(false)
+    setLiveConnectionState("manual")
+    if (liveSessionTimerRef.current) {
+      clearTimeout(liveSessionTimerRef.current)
+      liveSessionTimerRef.current = null
+    }
+  }, [])
+
   useEffect(() => {
     if (typeof window === "undefined" || typeof window.EventSource === "undefined") {
       return
     }
 
+    if (!liveModeEnabled) {
+      liveModeEnabledRef.current = false
+      return
+    }
+
+    liveModeEnabledRef.current = true
     let closed = false
 
     const closeCurrentSource = () => {
@@ -1363,7 +1398,7 @@ export function MeridianDashboard({
     }
 
     function connect() {
-      if (closed || document.visibilityState === "hidden") return
+      if (closed || !liveModeEnabledRef.current || document.visibilityState === "hidden") return
       setLiveConnectionState((state) => (state === "live" ? "live" : "connecting"))
       const source = new EventSource(`/api/projects/${initialWorkspace.project.id}/events`)
       liveEventSourceRef.current = source
@@ -1373,9 +1408,20 @@ export function MeridianDashboard({
       source.onerror = scheduleReconnect
     }
 
+    if (liveSessionTimerRef.current) clearTimeout(liveSessionTimerRef.current)
+    liveSessionTimerRef.current = setTimeout(() => {
+      if (!closed) {
+        liveModeEnabledRef.current = false
+        setLiveModeEnabled(false)
+        setLiveConnectionState("manual")
+      }
+    }, LIVE_SESSION_TIMEOUT_MS)
+
     connect()
     const handleVisibilityChange = () => {
       if (document.visibilityState === "hidden") {
+        liveModeEnabledRef.current = false
+        setLiveModeEnabled(false)
         closeCurrentSource()
         clearStaleTimer()
         setLiveConnectionState("manual")
@@ -1390,9 +1436,10 @@ export function MeridianDashboard({
       document.removeEventListener("visibilitychange", handleVisibilityChange)
       if (liveReconnectTimerRef.current) clearTimeout(liveReconnectTimerRef.current)
       if (liveStaleTimerRef.current) clearTimeout(liveStaleTimerRef.current)
+      if (liveSessionTimerRef.current) clearTimeout(liveSessionTimerRef.current)
       closeCurrentSource()
     }
-  }, [initialWorkspace.project.id, refreshProjectData])
+  }, [initialWorkspace.project.id, liveModeEnabled, refreshProjectData])
 
   const persistGraph = useCallback(async () => {
     setSaveState("saving")
@@ -1758,6 +1805,35 @@ export function MeridianDashboard({
     const payload = await response.json().catch(() => null)
     setNotificationJobMessage(response.ok ? "Notification job cancelled." : payload?.error ?? "Notification job cancellation failed.")
     await loadNotificationJobs()
+  }
+
+  const recoverQueuedNotificationJobs = async () => {
+    setIdleActionMessage("Recovering queued notification jobs...")
+    const response = await fetch(`/api/projects/${initialWorkspace.project.id}/notification-jobs/recover`, { method: "POST" })
+    const payload = await response.json().catch(() => null)
+    if (!response.ok) {
+      setIdleActionMessage(payload?.error ?? "Notification job recovery failed.")
+      return
+    }
+    const recovered = Number(payload?.result?.recovered ?? 0)
+    setIdleActionMessage(`Recovery dispatched ${recovered} queued or retrying notification job${recovered === 1 ? "" : "s"}.`)
+    await loadNotificationJobs()
+    if (activeSection === "logs") void loadProjectLogs()
+  }
+
+  const runRetentionCleanup = async () => {
+    setIdleActionMessage("Running retention cleanup...")
+    const response = await fetch(`/api/projects/${initialWorkspace.project.id}/retention/cleanup`, { method: "POST" })
+    const payload = await response.json().catch(() => null)
+    if (!response.ok) {
+      setIdleActionMessage(payload?.error ?? "Retention cleanup failed.")
+      return
+    }
+    const result = (payload?.result ?? {}) as Record<string, unknown>
+    const removedRows = Object.values(result).reduce<number>((sum, value) => sum + (typeof value === "number" ? value : 0), 0)
+    setIdleActionMessage(`Retention cleanup removed ${removedRows} expired operational row${removedRows === 1 ? "" : "s"}.`)
+    await loadProjectUsage()
+    if (activeSection === "logs") void loadProjectLogs()
   }
 
   const sendTestEmail = async () => {
@@ -3215,6 +3291,9 @@ export function MeridianDashboard({
               </TooltipTrigger>
               <TooltipContent>{getLiveConnectionDetail(liveConnectionState, liveCheckedAt, liveChangedAreas)}</TooltipContent>
             </Tooltip>
+            <Button size="sm" variant="outline" onClick={liveModeEnabled ? pauseLiveMode : startLiveMode}>
+              {liveModeEnabled ? "Pause live" : "Go live"}
+            </Button>
             <span className="hidden max-w-xs truncate text-xs text-muted-foreground 2xl:inline">
               {getLiveConnectionDetail(liveConnectionState, liveCheckedAt, liveChangedAreas)}
             </span>
@@ -3455,9 +3534,12 @@ export function MeridianDashboard({
             projectSummary={projectSummary}
             pilotOnboardingChecklist={pilotOnboardingChecklist}
             liveConnectionState={liveConnectionState}
+            liveModeEnabled={liveModeEnabled}
             liveCheckedAt={liveCheckedAt}
             liveChangedAreas={liveChangedAreas}
             isRefreshingProject={isRefreshingProject}
+            onStartLiveMode={startLiveMode}
+            onPauseLiveMode={pauseLiveMode}
             onRefreshProject={refreshProjectData}
             onOpenSection={openDashboardSection}
             onStartTutorial={openFirstWorkflowTutorial}
@@ -3593,6 +3675,7 @@ export function MeridianDashboard({
             notificationJobs={notificationJobs}
             notificationJobCounts={notificationJobCounts}
             notificationJobMessage={notificationJobMessage}
+            idleActionMessage={idleActionMessage}
             projectUsage={projectUsage}
             projectUsageMessage={projectUsageMessage}
             productionObservability={productionObservability}
@@ -3609,6 +3692,8 @@ export function MeridianDashboard({
             onLoadNotificationJobs={loadNotificationJobs}
             onLoadProjectUsage={loadProjectUsage}
             onLoadProductionObservability={loadProductionObservability}
+            onRecoverQueuedJobs={recoverQueuedNotificationJobs}
+            onRunRetentionCleanup={runRetentionCleanup}
             onRetryNotificationJob={retryNotificationJob}
             onCancelNotificationJob={cancelNotificationJob}
             onOpenMap={() => openDashboardSection("map")}
@@ -4331,9 +4416,12 @@ function ControlRoomSection({
   projectSummary,
   pilotOnboardingChecklist,
   liveConnectionState,
+  liveModeEnabled,
   liveCheckedAt,
   liveChangedAreas,
   isRefreshingProject,
+  onStartLiveMode,
+  onPauseLiveMode,
   onRefreshProject,
   onOpenSection,
   onStartTutorial,
@@ -4356,9 +4444,12 @@ function ControlRoomSection({
   }
   pilotOnboardingChecklist: ReturnType<typeof buildPilotOnboardingChecklist>
   liveConnectionState: LiveConnectionState
+  liveModeEnabled: boolean
   liveCheckedAt: string | null
   liveChangedAreas: string[]
   isRefreshingProject: boolean
+  onStartLiveMode: () => void
+  onPauseLiveMode: () => void
   onRefreshProject: () => Promise<void>
   onOpenSection: (section: DashboardSection) => void
   onStartTutorial: () => void
@@ -4568,6 +4659,9 @@ function ControlRoomSection({
                 <Button variant="outline" onClick={onRefreshProject} disabled={isRefreshingProject}>
                   <Activity data-icon="inline-start" />
                   {isRefreshingProject ? "Refreshing telemetry" : "Refresh telemetry now"}
+                </Button>
+                <Button variant={liveModeEnabled ? "secondary" : "outline"} onClick={liveModeEnabled ? onPauseLiveMode : onStartLiveMode}>
+                  {liveModeEnabled ? "Pause live" : "Go live"}
                 </Button>
               </CardContent>
             </Card>
@@ -5970,6 +6064,7 @@ function TestingSection({
   notificationJobs,
   notificationJobCounts,
   notificationJobMessage,
+  idleActionMessage,
   projectUsage,
   projectUsageMessage,
   productionObservability,
@@ -5986,6 +6081,8 @@ function TestingSection({
   onLoadNotificationJobs,
   onLoadProjectUsage,
   onLoadProductionObservability,
+  onRecoverQueuedJobs,
+  onRunRetentionCleanup,
   onRetryNotificationJob,
   onCancelNotificationJob,
   onOpenMap,
@@ -6005,6 +6102,7 @@ function TestingSection({
   notificationJobs: NotificationJobRecord[]
   notificationJobCounts: Record<string, number>
   notificationJobMessage: string
+  idleActionMessage: string
   projectUsage: ProjectUsageSnapshot | null
   projectUsageMessage: string
   productionObservability: ProductionObservabilitySnapshot | null
@@ -6021,6 +6119,8 @@ function TestingSection({
   onLoadNotificationJobs: () => Promise<void>
   onLoadProjectUsage: () => Promise<void>
   onLoadProductionObservability: () => Promise<void>
+  onRecoverQueuedJobs: () => Promise<void>
+  onRunRetentionCleanup: () => Promise<void>
   onRetryNotificationJob: (jobId: string) => Promise<void>
   onCancelNotificationJob: (jobId: string) => Promise<void>
   onOpenMap: () => void
@@ -6091,6 +6191,30 @@ function TestingSection({
                 Refresh overview to classify production dependencies, runtime policy, poll freshness, durable job pressure, and ingestion guardrails.
               </div>
             )}
+          </div>
+        </details>
+
+        <details id="testing-idle-posture" open className="rounded-lg border bg-background">
+          <summary className="cursor-pointer px-5 py-4 font-semibold">Idle posture</summary>
+          <div className="grid gap-4 px-5 pb-5">
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <MetricTile label="Inngest recovery" value="Manual" detail="Scheduled recovery is off unless MERIDIAN_BACKGROUND_RECOVERY_MODE is enabled." tone="good" />
+              <MetricTile label="Retention cleanup" value="Manual" detail="Scheduled cleanup is off unless MERIDIAN_RETENTION_CLEANUP_MODE is enabled." tone="good" />
+              <MetricTile label="Scheduled polling" value="Off" detail="Scheduled polling: Off by default. Use manual polling or enable an external scheduler for active pilots." tone="good" />
+              <MetricTile label="Live refresh" value="Manual" detail="Dashboard SSE starts only after Go live and pauses when hidden or timed out." tone="good" />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="sm" variant="outline" onClick={onRecoverQueuedJobs} disabled={!canManageOrganization}>
+                Recover queued jobs now
+              </Button>
+              <Button size="sm" variant="outline" onClick={onRunRetentionCleanup} disabled={!canManageOrganization}>
+                Run retention cleanup now
+              </Button>
+              <Button size="sm" variant="outline" onClick={onRunPollNow} disabled={!canManageOrganization}>
+                Poll project now
+              </Button>
+              {idleActionMessage ? <span className="text-xs text-muted-foreground">{idleActionMessage}</span> : null}
+            </div>
           </div>
         </details>
 

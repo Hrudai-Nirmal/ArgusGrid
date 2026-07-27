@@ -63,16 +63,20 @@ test("Inngest exposes a retention cleanup sweep", async () => {
 
   assert.match(functionsSource, /cleanupOperationalRetention/)
   assert.match(functionsSource, /cleanup-operational-retention/)
-  assert.match(routeSource, /cleanupOperationalRetention/)
+  assert.match(routeSource, /getActiveInngestFunctions/)
+  assert.match(functionsSource, /getRetentionCleanupMode/)
   assert.match(pollingSource, /DEFAULT_RETENTION_POLICY_DAYS\.metricSamples/)
 })
 
-test("idle background schedules avoid minute-by-minute database wakeups", async () => {
+test("idle background schedules are opt-in and avoid minute-by-minute defaults", async () => {
   const functionsSource = await readFile("src/inngest/functions.ts", "utf8")
   const readme = await readFile("README.md", "utf8")
 
   assert.match(functionsSource, /recover-queued-notifications/)
-  assert.match(functionsSource, /cron:\s*"\*\/15 \* \* \* \*"/)
+  assert.match(functionsSource, /getBackgroundRecoveryMode/)
+  assert.match(functionsSource, /MINIMAL_RECOVERY_CRON\s*=\s*"17 \*\/6 \* \* \*"/)
+  assert.match(functionsSource, /FULL_RECOVERY_CRON\s*=\s*"\*\/15 \* \* \* \*"/)
+  assert.match(functionsSource, /if \(getBackgroundRecoveryMode\(\) !== "off"\)/)
   assert.doesNotMatch(functionsSource, /cron:\s*"\* \* \* \* \*"/)
   assert.match(readme, /Every-minute cron keeps the database compute warm/i)
 })

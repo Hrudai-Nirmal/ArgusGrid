@@ -52,7 +52,7 @@ Run production migrations with:
 npm run prisma:deploy
 ```
 
-Vercel cron is configured in `vercel.json` to call `/api/cron/poll` daily as a backup for Hobby-compatible limits. The primary high-frequency scheduler can be one Meridian-owned cron-job.org job that calls the same route every minute when active production metric polling is needed. Every-minute cron keeps the database compute warm and should stay disabled during idle/private-beta cost-control periods. The route requires `CRON_SECRET` and accepts either:
+Meridian has no Vercel cron schedule by default. The secured `/api/cron/poll` route remains available for explicit schedulers, but production polling is manual unless an active pilot needs REST metric monitoring. A high-frequency scheduler can be one Meridian-owned cron-job.org job that calls the same route every minute when active production metric polling is needed. Every-minute cron keeps the database compute warm and should stay disabled during idle/private-beta cost-control periods. The route requires `CRON_SECRET` and accepts either:
 
 - `Authorization: Bearer <CRON_SECRET>`
 - HTTP Basic auth with username `meridian-cron` and password `<CRON_SECRET>`
@@ -68,7 +68,7 @@ HTTP auth username: meridian-cron
 HTTP auth password: production CRON_SECRET
 ```
 
-After creating the job, run a manual test execution in cron-job.org and expect HTTP 200 with `ok: true` and `mode: "secured-cron"`. The scheduler checks every minute, but each endpoint is claimed only when its configured cadence is due; an idle tick returns `status: "SKIPPED"` without adding poll history. It can still wake Neon compute, so disable the cron-job.org job when no pilots require continuous metric polling. Then confirm Testing and `/api/health` show updated latest completed poll metadata.
+After creating the job, run a manual test execution in cron-job.org and expect HTTP 200 with `ok: true` and `mode: "secured-cron"`. The scheduler checks every minute, but each endpoint is claimed only when its configured cadence is due; an idle tick returns `status: "SKIPPED"` without adding poll history. It can still wake Neon compute, so keep cron-job.org disabled when no pilots require continuous metric polling. Then confirm Testing and `/api/health` show updated latest completed poll metadata.
 
 The deployed app exposes `/api/health` for safe readiness checks. It returns booleans and poll metadata only; it must never return secret values.
 
@@ -103,9 +103,9 @@ Client report flow:
 
 Attached maps are served through `/reports/[shareToken]/map.png`; attached brand images are served through `/reports/[shareToken]/brand-image`. Expired or revoked report links return `404` for the report page and attached image routes.
 
-Authenticated dashboards connect to `/api/projects/[projectId]/events` for lightweight live updates. The SSE stream only sends safe project-scoped metadata such as cursors and changed areas, checks for changes at a bounded interval, and closes while the browser tab is hidden. The client refreshes the existing project payload only after a change. If the stream disconnects, the dashboard shows a reconnecting/manual state and the existing refresh controls remain available.
+Authenticated dashboards can connect to `/api/projects/[projectId]/events` for lightweight live updates after an operator clicks `Go live`. The default dashboard state is manual refresh to avoid idle Neon queries. The SSE stream only sends safe project-scoped metadata such as cursors and changed areas, checks for changes at a bounded interval, closes while the browser tab is hidden, and auto-pauses after a bounded session. The client refreshes the existing project payload only after a change. If the stream disconnects, the dashboard shows a reconnecting/manual state and the existing refresh controls remain available.
 
-The dashboard header and Control Room show the live stream state, last checked time, latest changed areas, and a manual `Refresh telemetry now` fallback. Use this to verify whether new runs, polling changes, and alert updates are arriving through the live signal path or need manual refresh.
+The dashboard header and Control Room show the live stream state, `Go live` / `Pause live`, last checked time, latest changed areas, and a manual `Refresh telemetry now` fallback. Use this to verify whether new runs, polling changes, and alert updates are arriving through the live signal path or need manual refresh.
 
 Control Room also includes Interactive Tutorial v2 for the first REST metric setup path. It auto-starts once per browser for projects with no real runs or metric samples, keeps the page undimmed/clickable, highlights the actual target component, and guides users through node creation, REST metric setup, manual polling, metric evidence, and client proof. The tutorial widget starts bottom-center, can be dragged to snap to an edge/corner, and can collapse to a compact `Show tutorial ^` tab. Navigation steps complete when visited; evidence steps use real persisted data, so sample fallback rows never count as proof. Tutorial completion and widget preferences are stored locally; no database migration is required.
 
@@ -161,7 +161,7 @@ Native Slack alert destinations also live in `Integrations`, using Slack incomin
 
 ## Durable Notification Jobs
 
-Alert email, generic webhook, and Slack delivery run through a Postgres-backed outbox and Inngest. Meridian writes one job per recipient/destination in the same transaction as the alert lifecycle change, then sends Inngest only the job id and generation. Jobs survive failed event publishing, retry five total attempts with backoff, recover stale locks, and retain terminal state for 30 days. Resend receives a stable idempotency key; signed webhooks retain a stable delivery id. Slack is at-least-once when a timeout makes the remote outcome unknowable. The notification recovery sweep runs every 15 minutes to reduce idle database wakeups; direct Inngest job events still process immediately when dispatch succeeds. A daily Inngest retention sweep prunes high-volume operational rows: raw workflow runs and metric samples default to 90 days, terminal jobs to 30 days, notification deliveries and poll executions to 90 days, audit logs to 365 days, and rate-limit buckets to 2 days.
+Alert email, generic webhook, and Slack delivery run through a Postgres-backed outbox and Inngest. Meridian writes one job per recipient/destination in the same transaction as the alert lifecycle change, then sends Inngest only the job id and generation. Direct Inngest job events still process immediately when dispatch succeeds, retry five total attempts with backoff, and retain terminal state for 30 days. Resend receives a stable idempotency key; signed webhooks retain a stable delivery id. Slack is at-least-once when a timeout makes the remote outcome unknowable. Scheduled notification recovery is off by default; owners/admins can click `Recover queued jobs now` in Testing, or set `MERIDIAN_BACKGROUND_RECOVERY_MODE=minimal` for a 6-hour sweep or `full` for a 15-minute sweep during active pilots. Retention cleanup is manual by default through `Run retention cleanup now`; set `MERIDIAN_RETENTION_CLEANUP_MODE=weekly` or `daily` only when continuous cleanup is worth the idle Inngest executions. Raw workflow runs and metric samples default to 90 days, terminal jobs to 30 days, notification deliveries and poll executions to 90 days, audit logs to 365 days, and rate-limit buckets to 2 days.
 
 ## Enterprise Usage Guardrails
 
@@ -181,7 +181,8 @@ Manual production setup:
 2. Create an event key and copy the production signing key.
 3. Add `INNGEST_EVENT_KEY` and `INNGEST_SIGNING_KEY` to Vercel Production only.
 4. Redeploy Meridian, then manually sync `https://meridian.hrudainirmal.in/api/inngest` from Inngest.
-5. Open `Testing` -> `Notification jobs` and confirm Inngest readiness plus queue counts.
+5. Keep `MERIDIAN_BACKGROUND_RECOVERY_MODE=off` and `MERIDIAN_RETENTION_CLEANUP_MODE=manual` unless an active pilot needs scheduled recovery or cleanup.
+6. Open `Testing` -> `Idle posture` and `Notification jobs` to confirm zero-idle mode, Inngest readiness, and queue counts.
 
 Do not configure Preview until it has a separate database and Inngest environment. For local development, run the app, start the Inngest Dev Server against `http://localhost:3000/api/inngest`, and use `INNGEST_DEV=1`; cloud keys are not required.
 
@@ -204,7 +205,7 @@ Meridian uses GitHub Actions as the first enterprise-readiness gate. CI runs on 
 
 `/api/health` includes safe build metadata: app version, commit SHA, optional build time, and environment. It also separates database reachability from database schema compatibility so an unapplied Prisma migration shows up before feature QA reaches a broken route. Testing -> Deployment readiness renders the same metadata for operators. These fields must never include database URLs, OAuth secrets, encryption keys, cron secrets, email provider keys, Slack webhook URLs, webhook signing secrets, raw ingestion tokens, or encrypted payloads.
 
-Meridian currently uses a minimum-safe environment model: Production is the only live runtime. Preview deployments and local development may render the app and readiness state, but external side effects are disabled by default outside Production. That means cron polling, manual endpoint polling, Resend email sends, Slack incoming-webhook sends, generic webhook sends, and Inngest cloud worker execution are blocked or skipped unless an explicit operator opt-in is configured. `/api/health` and Testing -> Deployment readiness show the runtime label, deployment URL, side-effect policy, background-job policy, cron policy, and safe warnings. The optional escape hatches `MERIDIAN_ALLOW_EXTERNAL_EFFECTS=1` and `MERIDIAN_ALLOW_BACKGROUND_JOBS=1` are reserved for deliberate isolated Preview/dev testing, not for shared production data.
+Meridian currently uses a minimum-safe environment model: Production is the only live runtime, and even Production defaults to zero idle scheduled work. Preview deployments and local development may render the app and readiness state, but external side effects are disabled by default outside Production. That means cron polling, manual endpoint polling, Resend email sends, Slack incoming-webhook sends, generic webhook sends, and Inngest cloud worker execution are blocked or skipped unless an explicit operator opt-in is configured. `/api/health` and Testing -> Deployment readiness show the runtime label, deployment URL, side-effect policy, background-job policy, cron policy, and safe warnings. Testing -> Idle posture shows whether scheduled recovery, retention cleanup, external polling, and live refresh are manual or explicitly enabled. The optional escape hatches `MERIDIAN_ALLOW_EXTERNAL_EFFECTS=1` and `MERIDIAN_ALLOW_BACKGROUND_JOBS=1` are reserved for deliberate isolated Preview/dev testing, not for shared production data.
 
 Full Preview isolation with a separate Neon database and separate Inngest environment is deferred until Preview is used for mutation QA. Until then, do not point Preview at production data for active testing.
 
