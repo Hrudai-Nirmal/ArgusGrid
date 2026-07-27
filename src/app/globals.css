@@ -50,38 +50,38 @@
 }
 
 :root {
-  --background: oklch(0.972 0.006 245);
-  --foreground: oklch(0.13 0.022 252);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.13 0.022 252);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.13 0.022 252);
-  --primary: oklch(0.42 0.14 227);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.925 0.017 245);
-  --secondary-foreground: oklch(0.16 0.026 252);
-  --muted: oklch(0.91 0.014 245);
-  --muted-foreground: oklch(0.34 0.034 252);
-  --accent: oklch(0.9 0.032 220);
-  --accent-foreground: oklch(0.15 0.026 252);
+  --background: #F3E4C9;
+  --foreground: #241A14;
+  --card: #FFF7E8;
+  --card-foreground: #241A14;
+  --popover: #FFF7E8;
+  --popover-foreground: #241A14;
+  --primary: #A98B76;
+  --primary-foreground: #241A14;
+  --secondary: #BFA28C;
+  --secondary-foreground: #241A14;
+  --muted: #E8D5BA;
+  --muted-foreground: #5B4638;
+  --accent: #BABF94;
+  --accent-foreground: #202416;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.805 0.018 245);
-  --input: oklch(0.775 0.02 245);
-  --ring: oklch(0.53 0.13 227);
-  --chart-1: oklch(0.62 0.16 224);
-  --chart-2: oklch(0.68 0.16 160);
-  --chart-3: oklch(0.73 0.17 70);
-  --chart-4: oklch(0.58 0.18 292);
-  --chart-5: oklch(0.62 0.21 25);
+  --border: #BFA28C;
+  --input: #A98B76;
+  --ring: #A98B76;
+  --chart-1: #A98B76;
+  --chart-2: #BABF94;
+  --chart-3: #BFA28C;
+  --chart-4: #7D8A5E;
+  --chart-5: #8A6148;
   --radius: 0.5rem;
-  --sidebar: oklch(0.94 0.011 245);
-  --sidebar-foreground: oklch(0.14 0.022 252);
-  --sidebar-primary: oklch(0.42 0.14 227);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.885 0.027 220);
-  --sidebar-accent-foreground: oklch(0.14 0.022 252);
-  --sidebar-border: oklch(0.78 0.018 245);
-  --sidebar-ring: oklch(0.53 0.13 227);
+  --sidebar: #E8D5BA;
+  --sidebar-foreground: #241A14;
+  --sidebar-primary: #A98B76;
+  --sidebar-primary-foreground: #241A14;
+  --sidebar-accent: #BABF94;
+  --sidebar-accent-foreground: #202416;
+  --sidebar-border: #BFA28C;
+  --sidebar-ring: #A98B76;
 }
 
 .dark {
