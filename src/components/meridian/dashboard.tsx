@@ -6675,6 +6675,7 @@ function BillingSection({
   const referencePlan = MERIDIAN_PRICING_PLANS.find((plan) => plan.id === "agency_beta") ?? MERIDIAN_PRICING_PLANS[0]
   const counts = projectUsage?.counts
   const policyCopy = getOperationsPolicyCopy(operationsPolicy)
+  const [isPolicyDetailsOpen, setIsPolicyDetailsOpen] = useState(false)
 
   return (
     <SectionShell>
@@ -6724,7 +6725,7 @@ function BillingSection({
           <CardHeader className="flex flex-row items-start justify-between gap-3">
             <div>
               <CardTitle>Usage by category</CardTitle>
-              <CardDescription>Graph views of current project usage against the Agency Beta modeling limits.</CardDescription>
+              <CardDescription>Live project snapshot from the bounded usage API, shown against the Agency Beta modeling limits.</CardDescription>
             </div>
             <Button size="sm" variant="outline" onClick={onLoadProjectUsage}>Refresh usage</Button>
           </CardHeader>
@@ -6742,9 +6743,14 @@ function BillingSection({
         </Card>
 
         <Card id="billing-operations-policy">
-          <CardHeader>
-            <CardTitle>Operations Policy</CardTitle>
-            <CardDescription>Customer-facing customization for freshness, reliability, retention, and spend behavior. Meridian owns the infrastructure mapping.</CardDescription>
+          <CardHeader className="flex flex-row items-start justify-between gap-3">
+            <div>
+              <CardTitle>Operations Policy</CardTitle>
+              <CardDescription>Project-specific controls for freshness, reliability, retention, and spend behavior. Meridian owns the infrastructure mapping.</CardDescription>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => setIsPolicyDetailsOpen((isOpen) => !isOpen)}>
+              {isPolicyDetailsOpen ? "Hide details" : "Know more"}
+            </Button>
           </CardHeader>
           <CardContent className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
             <div className="grid gap-3">
@@ -6816,6 +6822,18 @@ function BillingSection({
               </label>
               <Button onClick={onSaveOperationsPolicy} disabled={!canManageOrganization}>Save operations policy</Button>
               {operationsPolicyMessage ? <div className="text-xs text-muted-foreground">{operationsPolicyMessage}</div> : null}
+              {isPolicyDetailsOpen ? (
+                <div className="grid gap-3 rounded-lg border bg-background p-4 text-xs text-muted-foreground">
+                  <div className="font-medium text-foreground">Policy scope: this project only</div>
+                  <div>
+                    Changing this policy affects the current project, not the whole account or organization. Another project can keep a different polling, retention, and spend posture.
+                  </div>
+                  <div className="font-medium text-foreground">Implementation status: saved policy</div>
+                  <div>
+                    These controls are persisted and audited today, but most choices are not yet automatically enforced by schedulers, retention jobs, or billing limits. They are the control contract Meridian will wire into usage enforcement next.
+                  </div>
+                </div>
+              ) : null}
             </div>
             <div className="grid content-start gap-3 rounded-lg border bg-muted/20 p-4 text-sm">
               <div className="font-medium">Current policy summary</div>
@@ -6826,6 +6844,26 @@ function BillingSection({
                 <div>Retention: <span className="font-medium text-foreground">{policyCopy.retention}</span></div>
                 <div>Spend: <span className="font-medium text-foreground">{policyCopy.spend}</span></div>
               </div>
+              <Separator />
+              {isPolicyDetailsOpen ? (
+                <div className="grid gap-2 text-xs text-muted-foreground">
+                  <div>
+                    <span className="font-medium text-foreground">Operations mode:</span> Cost Saver favors manual/background-off behavior, Balanced is the default pilot posture, and Priority is for paid pilots that accept higher freshness cost.
+                  </div>
+                  <div>
+                    <span className="font-medium text-foreground">Polling frequency:</span> Controls the desired REST metric freshness for this project. Manual means no scheduled REST polling.
+                  </div>
+                  <div>
+                    <span className="font-medium text-foreground">Notification reliability:</span> Standard relies on event-driven delivery plus manual recovery. Priority is intended for scheduled recovery during active pilots.
+                  </div>
+                  <div>
+                    <span className="font-medium text-foreground">Retention:</span> Declares how long raw project evidence should be kept before rollups/reports become the primary history.
+                  </div>
+                  <div>
+                    <span className="font-medium text-foreground">Spend protection:</span> Use credits lets extra usage consume prepaid credits; stop at plan is intended to block expensive writes when plan limits are reached.
+                  </div>
+                </div>
+              ) : null}
               <Separator />
               <div className="text-xs text-muted-foreground">
                 Users customize outcomes here. Meridian still controls Neon, Inngest, Vercel, and scheduler infrastructure centrally so one project cannot create unbounded idle cost.

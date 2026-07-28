@@ -47,8 +47,9 @@ Use this checklist for production validation on `https://meridian.hrudainirmal.i
 - Open `Billing` from the main sidebar and confirm it is separate from `Account`, `Settings`, and `Testing`.
 - Confirm Plans show Free Sandbox, Solo Beta, Agency Beta, and Enterprise Pilot with USD and INR monthly rates.
 - Confirm Credit pool shows 500, 2,000, and 10,000 credit packs with USD and INR rates.
-- Confirm Usage graphs load bounded 30-day counts for nodes, workflow runs, metric samples, notification jobs, report links, and active telemetry tokens.
+- Confirm Usage graphs load live bounded 30-day snapshots for nodes, workflow runs, metric samples, notification jobs, report links, and active telemetry tokens.
 - Refresh usage and confirm counts remain secret-safe: no raw tokens, webhook URLs, Slack URLs, signing secrets, encrypted payloads, env values, or credential bodies.
+- Click `Know more` in Operations Policy and confirm the explainer says policies are project-specific and currently persisted/advisory until enforcement is wired into schedulers, retention, and spend limits.
 - As an owner/admin, change Operations Policy values for mode, polling frequency, notification reliability, retention, and spend protection; save and confirm the success message.
 - As a viewer/member where possible, confirm Operations Policy save controls are unavailable or rejected.
 - Open `Account` and confirm signed-in identity, organization, current project, Team/Settings shortcuts, and the only visible `Sign out` action.

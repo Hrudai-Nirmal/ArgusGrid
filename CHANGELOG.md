@@ -14,6 +14,7 @@
 - Added an evidence-backed Integrations setup wizard with provider steps, Dify Code/HTTP guidance, create-token/send-test/check-connection actions, and metric polling handoff.
 - Smoothed live-update stream rollover so planned SSE reconnects do not flicker the badge from Live to Reconnecting unless the stream becomes stale.
 - Added a dedicated Billing section with conservative USD/INR beta plan modeling, prepaid credit packs, bounded usage graphs, and owner/admin project operations policy controls.
+- Clarified Billing usage as live bounded snapshots and added Operations Policy explainers for project scope and current advisory enforcement status.
 
 ## 0.1.0
 
