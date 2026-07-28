@@ -5,6 +5,7 @@ import { JSONPath } from "jsonpath-plus"
 import { buildApiAuthHeaderEntries, getStoredAuthHeaderName } from "@/lib/api-auth-headers.mjs"
 import { createAndDispatchAlertEvent } from "@/lib/alert-events"
 import { normalizeAlertRuleMetadata, type AnomalyDirection } from "@/lib/alert-rule-metadata"
+import { authorizeProjectUsage } from "@/lib/billing-entitlements-server"
 import { decryptSecret } from "@/lib/crypto"
 import { getPrisma } from "@/lib/prisma"
 import { DEFAULT_RETENTION_POLICY_DAYS, getRetentionCutoff } from "@/lib/retention-policy.mjs"
@@ -358,8 +359,20 @@ export async function runProjectPolling(options: { projectId?: string; force?: b
       }
 
       if (samples.length) {
-        await prisma.metricSample.createMany({ data: samples })
-        createdSamples += samples.length
+        const entitlement = await authorizeProjectUsage(prisma, {
+          projectId: node.projectId,
+          resource: "metric_sample",
+          amount: samples.length,
+        })
+        if (entitlement.allowed) {
+          await prisma.metricSample.createMany({ data: samples })
+          createdSamples += samples.length
+        } else {
+          degraded = true
+          const reason = entitlement.reason ?? "Metric sample entitlement limit reached."
+          breachReasons.push("Billing entitlement blocked metric samples")
+          errors.push(`${node.label}: ${reason}`)
+        }
       }
 
       await prisma.endpointNode.update({

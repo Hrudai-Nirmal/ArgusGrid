@@ -3,6 +3,7 @@ import { z } from "zod"
 
 import { getApiUserId, requireProjectRole } from "@/lib/api-session"
 import { createAuditLog } from "@/lib/audit-log"
+import { authorizeProjectUsage } from "@/lib/billing-entitlements-server"
 import { getPrisma } from "@/lib/prisma"
 import { decodeReportAsset, MAX_BRAND_IMAGE_BYTES, MAX_MAP_IMAGE_BYTES } from "@/lib/report-assets.mjs"
 import { resolveReportPeriod } from "@/lib/report-periods.mjs"
@@ -122,6 +123,22 @@ export async function POST(request: Request, context: { params: Promise<{ projec
   }
 
   const prisma = getPrisma()
+  const entitlement = await authorizeProjectUsage(prisma, {
+    projectId,
+    resource: "report_share",
+  })
+  if (!entitlement.allowed) {
+    return NextResponse.json({
+      error: entitlement.error,
+      reason: entitlement.reason,
+      resource: entitlement.resource,
+      plan: entitlement.plan,
+      limit: entitlement.limit,
+      used: entitlement.used,
+      creditsRemaining: entitlement.creditsRemaining,
+    }, { status: entitlement.status })
+  }
+
   const presetId = parsed.data.presetId?.trim() || null
   if (presetId) {
     const preset = await prisma.reportPreset.findFirst({

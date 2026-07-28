@@ -9,7 +9,7 @@ import { sanitizeAuditMetadata } from "@/lib/audit-log"
 import { getPrisma } from "@/lib/prisma"
 import { dateBoundsWhere, parseBoundedQuery } from "@/lib/query-limits"
 
-const LOG_TYPES = ["activity", "alerts", "polling", "deliveries", "runs", "reports", "webhooks", "team", "map"] as const
+const LOG_TYPES = ["activity", "alerts", "polling", "deliveries", "runs", "reports", "webhooks", "billing", "team", "map"] as const
 const JOB_STATUSES = ["queued", "running", "retrying", "sent", "failed", "skipped", "cancelled"] as const
 
 const logsQuerySchema = z.object({
@@ -38,6 +38,7 @@ function getAuditType(entity: string, action: string): LogType {
   if (entity === "alert") return "alerts"
   if (entity === "notification-job") return "deliveries"
   if (entity === "webhook" || entity === "slack") return "webhooks"
+  if (entity === "billing") return "billing"
   if (entity === "report") return "reports"
   if (entity === "token") return "activity"
   if (entity === "team") return "team"
@@ -114,7 +115,7 @@ export async function GET(request: Request, context: { params: Promise<{ project
 
   const createdAtWhere = dateBoundsWhere(bounds.value)
   const sourceTake = Math.min(250, bounds.value.limit + 1)
-  const [auditLogs, alertEvents, deliveries, notificationJobs, pollExecutions, workflowRuns, reportShares, webhooks, slackDestinations, tokens, graphEdges] =
+  const [auditLogs, alertEvents, deliveries, notificationJobs, pollExecutions, workflowRuns, reportShares, webhooks, slackDestinations, tokens, graphEdges, paddleSubscriptions, paddleTransactions] =
     await Promise.all([
       prisma.auditLog.findMany({
         where: {
@@ -195,7 +196,35 @@ export async function GET(request: Request, context: { params: Promise<{ project
         orderBy: { createdAt: "desc" },
         take: sourceTake,
       }),
+      prisma.paddleSubscription.findMany({
+        where: {
+          OR: [{ projectId }, { organizationId: project.organizationId }],
+        },
+        orderBy: { updatedAt: "desc" },
+        take: sourceTake,
+      }),
+      prisma.paddleTransaction.findMany({
+        where: {
+          OR: [{ projectId }, { organizationId: project.organizationId }],
+        },
+        orderBy: { createdAt: "desc" },
+        take: sourceTake,
+      }),
     ])
+  const billingResourceIds = [
+    ...paddleSubscriptions.flatMap((subscription) => [subscription.paddleSubscriptionId, subscription.paddleCustomerId]),
+    ...paddleTransactions.flatMap((transaction) => [transaction.paddleTransactionId, transaction.paddleSubscriptionId, transaction.paddleCustomerId]),
+  ].filter((value): value is string => Boolean(value))
+  const paddleWebhookEvents = billingResourceIds.length
+    ? await prisma.paddleWebhookEvent.findMany({
+        where: {
+          resourceId: { in: billingResourceIds },
+          ...(createdAtWhere ? { createdAt: createdAtWhere } : {}),
+        },
+        orderBy: { createdAt: "desc" },
+        take: sourceTake,
+      })
+    : []
 
   const items: ProjectLogItem[] = [
     ...auditLogs.map((auditLog) => {
@@ -345,6 +374,22 @@ export async function GET(request: Request, context: { params: Promise<{ project
       entityId: edge.id,
       metadata: { sourceId: edge.sourceId, targetId: edge.targetId },
       createdAt: edge.createdAt.toISOString(),
+    })),
+    ...paddleWebhookEvents.map((event) => ({
+      id: `billing-webhook-${event.id}`,
+      type: "billing" as const,
+      title: `Paddle webhook ${event.status.toLowerCase()}`,
+      message: event.errorSummary ?? event.eventType,
+      status: event.status.toLowerCase(),
+      entity: "billing",
+      entityId: event.resourceId,
+      metadata: {
+        eventType: event.eventType,
+        environment: event.environment,
+        occurredAt: event.occurredAt?.toISOString() ?? null,
+        processedAt: event.processedAt?.toISOString() ?? null,
+      },
+      createdAt: event.createdAt.toISOString(),
     })),
   ]
 

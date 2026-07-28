@@ -17,6 +17,7 @@
 - Clarified Billing usage as live bounded snapshots and added Operations Policy explainers for project scope and current advisory enforcement status.
 - Removed the earlier payment-gateway fallback experiment after sandbox checkout proved unreliable, leaving Paddle as the only active checkout path.
 - Added Paddle Billing sync v1 with signed webhooks, Postgres customer/subscription/transaction mirrors, Billing subscription status, Billing history, and owner/admin customer portal sessions.
+- Added Billing Entitlements v1 with verified Paddle-derived plan access, 24-hour provisional paid-plan access while subscription webhooks catch up, credit-backed usage summaries, safe `402` enforcement for workflow runs, metric samples, and report shares, plus Billing log evidence.
 
 ## 0.1.0
 

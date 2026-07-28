@@ -396,7 +396,7 @@ type ProjectAlertRule = WorkspacePayload["alertRules"][number]
 type AlertTimelineFilter = "24h" | "7d" | "30d" | "all"
 type LiveConnectionState = "connecting" | "live" | "reconnecting" | "manual"
 type DashboardSection = "control-room" | "projects" | "map" | "runs" | "alerts" | "reports" | "billing" | "integrations" | "testing" | "logs" | "team" | "settings" | "account"
-type ProjectLogType = "activity" | "alerts" | "polling" | "deliveries" | "runs" | "reports" | "webhooks" | "team" | "map"
+type ProjectLogType = "activity" | "alerts" | "polling" | "deliveries" | "runs" | "reports" | "webhooks" | "billing" | "team" | "map"
 type ProjectLogWindow = "24h" | "7d" | "30d" | "all"
 type NotificationJobStatus = "QUEUED" | "RUNNING" | "RETRYING" | "SENT" | "FAILED" | "SKIPPED" | "CANCELLED"
 type NotificationJobRecord = {
@@ -465,6 +465,32 @@ type BillingStatusSnapshot = {
     email: string | null
     updatedAt: string | null
   }
+  entitlement: {
+    plan: {
+      id: string
+      name: string
+      source: "subscription" | "provisional_transaction" | "free"
+      isProvisional: boolean
+      provisionalEndsAt: string | null
+    }
+    periodStart: string
+    usage: {
+      workflowRuns: number
+      metricSamples: number
+      notificationJobs: number
+      reportShares: number
+    }
+    overage: {
+      workflowRuns: number
+      metricSamples: number
+      notificationJobs: number
+      reportShares: number
+    }
+    creditPool: number
+    creditsUsed: number
+    creditsRemaining: number
+    spendProtection: string
+  } | null
   transactions: {
     id: string
     status: string
@@ -738,6 +764,7 @@ const sectionSubsections: Record<DashboardSection, { id: string; label: string; 
     { id: "reports-exports", label: "Exports" },
   ],
   billing: [
+    { id: "billing-subscription", label: "Subscription" },
     { id: "billing-plans", label: "Plans" },
     { id: "billing-credits", label: "Credits" },
     { id: "billing-usage", label: "Usage graphs" },
@@ -768,6 +795,7 @@ const sectionSubsections: Record<DashboardSection, { id: string; label: string; 
     { id: "logs-runs", label: "Runs", logType: "runs" },
     { id: "logs-reports", label: "Reports", logType: "reports" },
     { id: "logs-webhooks", label: "Webhooks", logType: "webhooks" },
+    { id: "logs-billing", label: "Billing", logType: "billing" },
     { id: "logs-team", label: "Team", logType: "team" },
     { id: "logs-map", label: "Map", logType: "map" },
   ],
@@ -6648,6 +6676,7 @@ function LogsSection({
                 <option value="runs">Runs</option>
                 <option value="reports">Reports</option>
                 <option value="webhooks">Webhooks</option>
+                <option value="billing">Billing</option>
                 <option value="team">Team</option>
                 <option value="map">Map</option>
               </select>
@@ -6839,6 +6868,9 @@ function BillingSection({
   const [checkoutMessage, setCheckoutMessage] = useState("")
   const [checkoutLoadingId, setCheckoutLoadingId] = useState<string | null>(null)
   const activeBillingKey = billingStatus?.subscription.billingKey ?? "free_sandbox"
+  const entitlement = billingStatus?.entitlement ?? null
+  const billingAccessLabel = entitlement?.plan.isProvisional ? `Provisional ${entitlement.plan.name}` : billingStatus?.subscription.access.label ?? "Not loaded"
+  const billingAccessTone = entitlement?.plan.isProvisional ? "warn" : billingStatus?.subscription.access.tone ?? "muted"
   const paddleClientToken = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN ?? ""
   const paddleEnvironment = normalizePaddleEnvironment(process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT)
   const paddlePriceIdsByCheckoutId: Record<string, string> = {
@@ -6929,8 +6961,8 @@ function BillingSection({
           <CardContent className="grid gap-3 lg:grid-cols-[0.9fr_1.1fr]">
             <div className="rounded-lg border bg-muted/20 p-4">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant={billingStatus?.subscription.access.tone === "good" ? "secondary" : billingStatus?.subscription.access.tone === "warn" ? "destructive" : "outline"}>
-                  {billingStatus?.subscription.access.label ?? "Not loaded"}
+                <Badge variant={billingAccessTone === "good" ? "secondary" : billingAccessTone === "warn" ? "destructive" : "outline"}>
+                  {billingAccessLabel}
                 </Badge>
                 <Badge variant="outline">{billingStatus?.environment ?? paddleEnvironment}</Badge>
                 {billingStatus?.webhookConfigured ? <Badge variant="secondary">Webhook configured</Badge> : <Badge variant="outline">Webhook missing</Badge>}
@@ -6938,7 +6970,7 @@ function BillingSection({
               </div>
               <div className="mt-3 grid gap-1 text-sm">
                 <div className="font-medium">
-                  {activeBillingKey === "free_sandbox" ? "Free Sandbox" : activeBillingKey.replaceAll("_", " ")}
+                  {entitlement?.plan.name ?? (activeBillingKey === "free_sandbox" ? "Free Sandbox" : activeBillingKey.replaceAll("_", " "))}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   Next billed: {formatDateTime(billingStatus?.subscription.nextBilledAt)}. Period ends: {formatDateTime(billingStatus?.subscription.currentPeriodEndsAt)}.
@@ -6946,6 +6978,17 @@ function BillingSection({
                 <div className="text-xs text-muted-foreground">
                   Customer: {billingStatus?.customer.email ?? (billingStatus?.customer.hasCustomer ? "Stored in Paddle" : "No Paddle customer yet")}.
                 </div>
+                {entitlement ? (
+                  <>
+                    <div className="text-xs text-muted-foreground">
+                      Credits remaining: {formatBillingNumber(entitlement.creditsRemaining)} of {formatBillingNumber(entitlement.creditPool)}.
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Entitlement source: {entitlement.plan.source.replaceAll("_", " ")}
+                      {entitlement.plan.isProvisional ? ` until ${formatDateTime(entitlement.plan.provisionalEndsAt)}` : ""}.
+                    </div>
+                  </>
+                ) : null}
                 {billingStatusMessage ? <div className="text-xs text-muted-foreground">{billingStatusMessage}</div> : null}
               </div>
             </div>
@@ -6978,6 +7021,14 @@ function BillingSection({
               </div>
             </div>
           </CardContent>
+          {entitlement ? (
+            <CardContent className="grid gap-3 border-t pt-4 md:grid-cols-4">
+              <UsageGraphRow label="Plan workflow runs" value={entitlement.usage.workflowRuns} limit={entitlement.plan.id === "free_sandbox" ? 500 : MERIDIAN_PRICING_PLANS.find((plan) => plan.id === entitlement.plan.id)?.workflowRunLimit ?? null} detail={`Current entitlement period starts ${formatDateTime(entitlement.periodStart)}.`} />
+              <UsageGraphRow label="Plan metric samples" value={entitlement.usage.metricSamples} limit={entitlement.plan.id === "free_sandbox" ? 500 : MERIDIAN_PRICING_PLANS.find((plan) => plan.id === entitlement.plan.id)?.metricSampleLimit ?? null} detail={`Spend protection: ${entitlement.spendProtection.replaceAll("_", " ")}.`} />
+              <UsageGraphRow label="Notification jobs" value={entitlement.usage.notificationJobs} limit={MERIDIAN_PRICING_PLANS.find((plan) => plan.id === entitlement.plan.id)?.notificationJobLimit ?? null} detail="Durable email, Slack, and webhook jobs." />
+              <UsageGraphRow label="Report shares" value={entitlement.usage.reportShares} limit={MERIDIAN_PRICING_PLANS.find((plan) => plan.id === entitlement.plan.id)?.reportShareLimit ?? null} detail="Client proof links in this period." />
+            </CardContent>
+          ) : null}
         </Card>
 
         <Card id="billing-plans">

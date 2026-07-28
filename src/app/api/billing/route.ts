@@ -5,6 +5,7 @@
 import { NextResponse } from "next/server"
 
 import { getApiUserId, requireProjectRole } from "@/lib/api-session"
+import { getProjectBillingEntitlement } from "@/lib/billing-entitlements-server"
 import { getPlanAccessState } from "@/lib/paddle-billing.mjs"
 import { getPaddleServerEnvironment, hasPaddleServerConfig } from "@/lib/paddle-server"
 import { getPrisma } from "@/lib/prisma"
@@ -113,6 +114,7 @@ export async function GET(request: Request) {
     }),
   ])
   const paddleSubscriptions = latestSubscription ? [latestSubscription] : []
+  const entitlement = await getProjectBillingEntitlement(project.id, prisma)
 
   return NextResponse.json({
     billing: {
@@ -126,6 +128,22 @@ export async function GET(request: Request) {
         email: paddleCustomers[0]?.email ?? null,
         updatedAt: paddleCustomers[0]?.updatedAt.toISOString() ?? null,
       },
+      entitlement: entitlement ? {
+        plan: {
+          id: entitlement.plan.id,
+          name: entitlement.plan.name,
+          source: entitlement.source,
+          isProvisional: entitlement.isProvisional,
+          provisionalEndsAt: entitlement.provisionalEndsAt,
+        },
+        periodStart: entitlement.periodStart,
+        usage: entitlement.usage,
+        overage: entitlement.overage,
+        creditPool: entitlement.creditPool,
+        creditsUsed: entitlement.creditsUsed,
+        creditsRemaining: entitlement.creditsRemaining,
+        spendProtection: entitlement.spendProtection,
+      } : null,
       transactions: paddleTransactions.map(serializeTransaction),
     },
   })

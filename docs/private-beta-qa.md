@@ -54,6 +54,9 @@ Use this checklist for production validation on `https://meridian.hrudainirmal.i
 - Confirm failed payment and modal dismiss states show clear non-secret messages.
 - Refresh Billing after the webhook arrives and confirm Subscription management shows the mirrored plan/customer state and Billing history shows the transaction.
 - As an owner/admin, click `Manage subscription` and confirm Paddle customer portal opens. Confirm viewers cannot mint a portal session.
+- Confirm Billing shows entitlement source, current period, usage rows, credits used, and `Credits remaining`.
+- If a plan payment transaction appears before its subscription webhook, confirm Billing shows provisional paid access rather than blocking the user as Free Sandbox.
+- Force a disposable project over a free/small limit and confirm workflow ingestion, metric sample persistence, or report share creation returns a safe `402` with plan/limit/credit context. Confirm `Logs` -> `Billing` shows the denial and relevant Paddle webhook events.
 - Confirm Usage graphs load live bounded 30-day snapshots for nodes, workflow runs, metric samples, notification jobs, report links, and active telemetry tokens.
 - Refresh usage and confirm counts remain secret-safe: no raw tokens, webhook URLs, Slack URLs, signing secrets, encrypted payloads, env values, or credential bodies.
 - Click `Know more` in Operations Policy and confirm the explainer says policies are project-specific and currently persisted/advisory until enforcement is wired into schedulers, retention, and spend limits.

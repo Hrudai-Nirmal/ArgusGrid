@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 
 import { createAlertEventWithJobs } from "@/lib/alert-events"
+import { authorizeProjectUsage } from "@/lib/billing-entitlements-server"
 import { enforceIngestionRateLimit } from "@/lib/ingestion-rate-limits"
 import { authenticateIngestionRequest, markIngestionTokenUsed } from "@/lib/ingestion-tokens"
 import { dispatchNotificationJobs } from "@/lib/notification-jobs"
@@ -67,6 +68,22 @@ export async function POST(request: Request) {
 
   if (!node) {
     return NextResponse.json({ error: "Node not found for this ingestion token." }, { status: 404 })
+  }
+
+  const entitlement = await authorizeProjectUsage(prisma, {
+    projectId: token.projectId,
+    resource: "workflow_run",
+  })
+  if (!entitlement.allowed) {
+    return NextResponse.json({
+      error: entitlement.error,
+      reason: entitlement.reason,
+      resource: entitlement.resource,
+      plan: entitlement.plan,
+      limit: entitlement.limit,
+      used: entitlement.used,
+      creditsRemaining: entitlement.creditsRemaining,
+    }, { status: entitlement.status })
   }
 
   const rateLimit = await enforceIngestionRateLimit(prisma, {
