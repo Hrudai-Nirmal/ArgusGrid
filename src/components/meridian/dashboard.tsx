@@ -6817,9 +6817,17 @@ function BillingSection({
         <Card id="billing-plans">
           <CardHeader>
             <CardTitle>Plans</CardTitle>
-            <CardDescription>Beta pricing in USD and INR. Payment collection is not enabled in-app yet.</CardDescription>
+            <CardDescription>Beta pricing in USD and INR. Use the upgrade buttons below to open Razorpay test checkout.</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-3 lg:grid-cols-4">
+          <CardContent className="grid gap-3">
+            <div className="rounded-lg border bg-muted/20 p-3 text-sm">
+              <div className="font-medium">Razorpay test checkout</div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                Choose a paid plan or credit pack to open Razorpay. Look for buttons such as Upgrade to Solo Beta and Buy 500 credits. Successful payments are verified now; plan and credit fulfilment still lands in the billing ledger milestone.
+              </div>
+              {checkoutMessage ? <div className="mt-2 text-xs text-muted-foreground">{checkoutMessage}</div> : null}
+            </div>
+            <div className="grid gap-3 lg:grid-cols-4">
             {MERIDIAN_PRICING_PLANS.map((plan) => (
               <div key={plan.id} className="grid content-start gap-3 rounded-lg border bg-background p-4">
                 <div>
@@ -6846,10 +6854,11 @@ function BillingSection({
                   })}
                   disabled={plan.monthlyInr === 0 || checkoutLoadingId === `plan-${plan.id}`}
                 >
-                  {plan.monthlyInr === 0 ? "Free plan" : checkoutLoadingId === `plan-${plan.id}` ? "Opening..." : "Pay monthly"}
+                  {plan.monthlyInr === 0 ? "Current free plan" : checkoutLoadingId === `plan-${plan.id}` ? "Opening Razorpay..." : `Upgrade to ${plan.name}`}
                 </Button>
               </div>
             ))}
+            </div>
           </CardContent>
         </Card>
 
@@ -6875,11 +6884,10 @@ function BillingSection({
                   })}
                   disabled={checkoutLoadingId === `credits-${pack.credits}`}
                 >
-                  {checkoutLoadingId === `credits-${pack.credits}` ? "Opening..." : "Buy credits"}
+                  {checkoutLoadingId === `credits-${pack.credits}` ? "Opening Razorpay..." : `Buy ${formatBillingNumber(pack.credits)} credits`}
                 </Button>
               </div>
             ))}
-            {checkoutMessage ? <div className="sm:col-span-3 text-xs text-muted-foreground">{checkoutMessage}</div> : null}
           </CardContent>
         </Card>
 
