@@ -58,6 +58,20 @@ test("Next config applies enterprise pilot browser security headers", async () =
   assert.match(source, /private,\s*no-store/)
 })
 
+test("browser permissions policy allows Razorpay checkout without weakening core denials", async () => {
+  const source = await readFile("next.config.ts", "utf8")
+
+  assert.doesNotMatch(source, /payment=\(\)/)
+  assert.match(source, /payment=\(self "https:\/\/checkout\.razorpay\.com"/)
+  assert.match(source, /accelerometer=\(self "https:\/\/checkout\.razorpay\.com"/)
+  assert.match(source, /gyroscope=\(self "https:\/\/checkout\.razorpay\.com"/)
+  assert.match(source, /camera=\(\)/)
+  assert.match(source, /microphone=\(\)/)
+  assert.match(source, /geolocation=\(\)/)
+  assert.match(source, /usb=\(\)/)
+  assert.match(source, /browsing-topics=\(\)/)
+})
+
 test("production smoke verifies security headers", async () => {
   const source = await readFile("scripts/smoke.mjs", "utf8")
 
