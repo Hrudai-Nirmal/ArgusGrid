@@ -67,6 +67,7 @@ test("Razorpay routes and Billing UI wire Standard Checkout without exposing key
   assert.match(dashboard, /prefill/)
   assert.match(dashboard, /contact/)
   assert.match(dashboard, /readonly/)
+  assert.doesNotMatch(dashboard, /method:\s*"card"/)
   assert.match(dashboard, /payment\.failed/)
   assert.match(dashboard, /ondismiss/)
   assert.match(dashboard, /Razorpay test checkout/)

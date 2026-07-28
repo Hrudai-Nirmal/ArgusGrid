@@ -6740,13 +6740,11 @@ function BillingSection({
     amountPaise,
     description,
     checkoutId,
-    method,
     receipt,
   }: {
     amountPaise: number
     description: string
     checkoutId: string
-    method?: "card" | "netbanking" | "upi" | "wallet"
     receipt: string
   }) => {
     const stopCheckoutWithMessage = (message: string) => {
@@ -6799,7 +6797,6 @@ function BillingSection({
           email: false,
           contact: false,
         },
-        method,
         theme: { color: "#4F46E5" },
         modal: {
           ondismiss: () => {
@@ -6860,7 +6857,6 @@ function BillingSection({
                     amountPaise: 100,
                     checkoutId: "razorpay-test-payment",
                     description: "Meridian INR 1 checkout test",
-                    method: "card",
                     receipt: "razorpay-test-1-inr",
                   })}
                   disabled={checkoutLoadingId === "razorpay-test-payment"}
