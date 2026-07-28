@@ -47,6 +47,9 @@ Use this checklist for production validation on `https://meridian.hrudainirmal.i
 - Open `Billing` from the main sidebar and confirm it is separate from `Account`, `Settings`, and `Testing`.
 - Confirm Plans show Free Sandbox, Solo Beta, Agency Beta, and Enterprise Pilot with USD and INR monthly rates.
 - Confirm Credit pool shows 500, 2,000, and 10,000 credit packs with USD and INR rates.
+- In Paddle sandbox, create monthly prices for Solo Beta, Agency Beta, and Enterprise Pilot plus one-time prices for 500, 2,000, and 10,000 credit packs. Add the Paddle client-side token and matching `NEXT_PUBLIC_PADDLE_PRICE_*` values to Vercel Production, then redeploy.
+- Click a paid plan or credit-pack checkout button and confirm the Paddle overlay opens. In Paddle sandbox, use card `4242 4242 4242 4242`, any name, any future expiry, and security code `100`.
+- Confirm completed Paddle checkout says fulfilment is not wired yet; do not treat this as active plan/credit entitlement until the billing ledger and Paddle webhook milestone lands.
 - Click `Test INR 1 payment`; confirm the Razorpay modal opens with the low-value checkout path and safe customer prefill.
 - Use Razorpay's official test cards first. UPI QR and specific netbanking banks, including HDFC, may be unavailable in Razorpay test mode depending on account/payment-method configuration.
 - If Razorpay asks for contact details, use a real-looking 10-digit mobile number. Obvious dummy/repeating values such as `9999999999` can be rejected before the payment method step.

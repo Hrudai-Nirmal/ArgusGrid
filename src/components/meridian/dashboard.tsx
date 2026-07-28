@@ -98,6 +98,7 @@ import {
 import { integrationTemplates, type IntegrationTemplate } from "@/lib/integration-templates"
 import { buildIntegrationWizardSteps, buildProviderSetupCopy } from "@/lib/integration-wizard.mjs"
 import { buildPilotOnboardingChecklist } from "@/lib/pilot-onboarding.mjs"
+import { getPaddleCheckoutUnavailableReason, isPaddleCheckoutReady, normalizePaddleEnvironment } from "@/lib/paddle-checkout.mjs"
 import { buildProviderFirstSignalStatus, getProviderOnboardingCopy } from "@/lib/provider-onboarding.mjs"
 import { buildRestMetricOnboardingStatus } from "@/lib/rest-metric-onboarding.mjs"
 import { formatSafeMetadata } from "@/lib/safe-metadata-format.mjs"
@@ -6668,10 +6669,56 @@ type RazorpayCheckoutInstance = {
   on: (eventName: "payment.failed", handler: (response: RazorpayCheckoutFailure) => void) => void
 }
 
+type PaddleCheckoutEvent = {
+  name?: string
+}
+
+type PaddleInstance = {
+  Environment?: {
+    set: (environment: "sandbox" | "production") => void
+  }
+  Initialize: (options: { token: string; eventCallback?: (event: PaddleCheckoutEvent) => void }) => void
+  Checkout: {
+    open: (options: {
+      items: { priceId: string; quantity: number }[]
+      customer?: { email?: string }
+      customData?: Record<string, string>
+      settings?: { displayMode?: "overlay"; theme?: "light" | "dark" }
+    }) => void
+  }
+}
+
 declare global {
   interface Window {
     Razorpay?: new (options: Record<string, unknown>) => RazorpayCheckoutInstance
+    Paddle?: PaddleInstance
   }
+}
+
+function loadPaddleCheckoutScript() {
+  return new Promise<void>((resolve, reject) => {
+    if (typeof window === "undefined") {
+      reject(new Error("Paddle checkout is available only in the browser."))
+      return
+    }
+    if (window.Paddle) {
+      resolve()
+      return
+    }
+    const existingScript = document.querySelector<HTMLScriptElement>('script[src="https://cdn.paddle.com/paddle/v2/paddle.js"]')
+    if (existingScript) {
+      existingScript.addEventListener("load", () => resolve(), { once: true })
+      existingScript.addEventListener("error", () => reject(new Error("Paddle checkout failed to load.")), { once: true })
+      return
+    }
+
+    const script = document.createElement("script")
+    script.src = "https://cdn.paddle.com/paddle/v2/paddle.js"
+    script.async = true
+    script.onload = () => resolve()
+    script.onerror = () => reject(new Error("Paddle checkout failed to load."))
+    document.body.appendChild(script)
+  })
 }
 
 function loadRazorpayCheckoutScript() {
@@ -6732,9 +6779,77 @@ function BillingSection({
   const [checkoutMessage, setCheckoutMessage] = useState("")
   const [checkoutLoadingId, setCheckoutLoadingId] = useState<string | null>(null)
   const razorpayPublicKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ?? ""
+  const paddleClientToken = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN ?? ""
+  const paddleEnvironment = normalizePaddleEnvironment(process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT)
+  const paddlePriceIdsByCheckoutId: Record<string, string> = {
+    "plan-solo_beta": process.env.NEXT_PUBLIC_PADDLE_PRICE_SOLO_BETA ?? "",
+    "plan-agency_beta": process.env.NEXT_PUBLIC_PADDLE_PRICE_AGENCY_BETA ?? "",
+    "plan-enterprise_pilot": process.env.NEXT_PUBLIC_PADDLE_PRICE_ENTERPRISE_PILOT ?? "",
+    "credits-500": process.env.NEXT_PUBLIC_PADDLE_PRICE_CREDITS_500 ?? "",
+    "credits-2000": process.env.NEXT_PUBLIC_PADDLE_PRICE_CREDITS_2000 ?? "",
+    "credits-10000": process.env.NEXT_PUBLIC_PADDLE_PRICE_CREDITS_10000 ?? "",
+  }
   const checkoutPrefillName = currentUser.name ?? "Meridian Test User"
   const checkoutPrefillEmail = currentUser.email ?? "test@meridian.local"
   const checkoutPrefillContact = "8012345678"
+
+  const startPaddleCheckout = async ({
+    checkoutId,
+    description,
+  }: {
+    checkoutId: string
+    description: string
+  }) => {
+    const priceId = paddlePriceIdsByCheckoutId[checkoutId] ?? ""
+    const unavailableReason = getPaddleCheckoutUnavailableReason({ clientToken: paddleClientToken, priceId })
+    if (unavailableReason) {
+      setCheckoutMessage(unavailableReason)
+      return
+    }
+
+    setCheckoutLoadingId(checkoutId)
+    setCheckoutMessage("Opening Paddle checkout...")
+    try {
+      await loadPaddleCheckoutScript()
+      if (!window.Paddle) {
+        setCheckoutMessage("Paddle checkout script loaded, but the checkout modal is unavailable.")
+        setCheckoutLoadingId(null)
+        return
+      }
+      if (paddleEnvironment === "sandbox") {
+        window.Paddle.Environment?.set("sandbox")
+      }
+      window.Paddle.Initialize({
+        token: paddleClientToken,
+        eventCallback: (event) => {
+          if (event.name === "checkout.completed") {
+            setCheckoutLoadingId(null)
+            setCheckoutMessage("Paddle checkout completed. Plan and credit fulfilment will be wired in the billing ledger milestone.")
+          }
+          if (event.name === "checkout.closed") {
+            setCheckoutLoadingId(null)
+            setCheckoutMessage("Paddle checkout was closed before payment completed.")
+          }
+        },
+      })
+      window.Paddle.Checkout.open({
+        items: [{ priceId, quantity: 1 }],
+        customer: { email: checkoutPrefillEmail },
+        customData: {
+          meridianCheckoutId: checkoutId,
+          meridianProjectId: project.id,
+        },
+        settings: {
+          displayMode: "overlay",
+          theme: "light",
+        },
+      })
+      setCheckoutMessage(`${description} opened in Paddle checkout.`)
+    } catch (checkoutError) {
+      setCheckoutLoadingId(null)
+      setCheckoutMessage(checkoutError instanceof Error ? checkoutError.message : "Paddle checkout failed to start.")
+    }
+  }
 
   const startRazorpayCheckout = async ({
     amountPaise,
@@ -6838,31 +6953,19 @@ function BillingSection({
         <Card id="billing-plans">
           <CardHeader>
             <CardTitle>Plans</CardTitle>
-            <CardDescription>Beta pricing in USD and INR. Use the upgrade buttons below to open Razorpay test checkout.</CardDescription>
+            <CardDescription>Beta pricing in USD and INR. Paid actions open Paddle Billing checkout when the matching price IDs are configured.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3">
             <div className="rounded-lg border bg-muted/20 p-3 text-sm">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <div className="font-medium">Razorpay test checkout</div>
+                  <div className="font-medium">Paddle Billing checkout</div>
                   <div className="mt-1 text-xs text-muted-foreground">
-                    Use the INR 1 test payment to verify checkout before trying plan or credit purchases. If Razorpay asks for contact details, use a real-looking 10-digit mobile number; obvious dummy numbers can be rejected by Checkout. Paid actions below are labeled like Upgrade to Solo Beta and Buy 500 credits. Successful payments are verified now; plan and credit fulfilment still lands in the billing ledger milestone.
+                    Paddle is the primary SaaS checkout path. Add a Paddle client-side token and one `pri_...` price ID per paid plan or credit pack, then use the upgrade and credit buttons below. Successful payments are captured by Paddle now; Meridian plan and credit fulfilment still lands in the billing ledger milestone.
+                    {!paddleClientToken ? " Paddle is not configured yet." : ` Paddle environment: ${paddleEnvironment}.`}
                   </div>
                 </div>
-                <Button
-                  className="sm:shrink-0"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => startRazorpayCheckout({
-                    amountPaise: 100,
-                    checkoutId: "razorpay-test-payment",
-                    description: "Meridian INR 1 checkout test",
-                    receipt: "razorpay-test-1-inr",
-                  })}
-                  disabled={checkoutLoadingId === "razorpay-test-payment"}
-                >
-                  {checkoutLoadingId === "razorpay-test-payment" ? "Opening Razorpay..." : "Test INR 1 payment"}
-                </Button>
+                <Badge variant={paddleClientToken ? "secondary" : "outline"}>{paddleClientToken ? "Paddle ready" : "Configure Paddle"}</Badge>
               </div>
               {checkoutMessage ? <div className="mt-2 text-xs text-muted-foreground">{checkoutMessage}</div> : null}
             </div>
@@ -6885,18 +6988,50 @@ function BillingSection({
                 <Button
                   size="sm"
                   variant={plan.monthlyInr === 0 ? "outline" : "default"}
-                  onClick={() => startRazorpayCheckout({
-                    amountPaise: plan.monthlyInr * 100,
+                  onClick={() => startPaddleCheckout({
                     checkoutId: `plan-${plan.id}`,
                     description: `${plan.name} monthly plan`,
-                    receipt: `${plan.id}`.slice(0, 40),
                   })}
-                  disabled={plan.monthlyInr === 0 || checkoutLoadingId === `plan-${plan.id}`}
+                  disabled={
+                    plan.monthlyInr === 0 ||
+                    checkoutLoadingId === `plan-${plan.id}` ||
+                    !isPaddleCheckoutReady({ clientToken: paddleClientToken, priceId: paddlePriceIdsByCheckoutId[`plan-${plan.id}`] })
+                  }
                 >
-                  {plan.monthlyInr === 0 ? "Current free plan" : checkoutLoadingId === `plan-${plan.id}` ? "Opening Razorpay..." : `Upgrade to ${plan.name}`}
+                  {plan.monthlyInr === 0
+                    ? "Current free plan"
+                    : !paddlePriceIdsByCheckoutId[`plan-${plan.id}`]
+                    ? "Configure Paddle price"
+                    : checkoutLoadingId === `plan-${plan.id}`
+                    ? "Opening Paddle..."
+                    : `Upgrade to ${plan.name}`}
                 </Button>
               </div>
             ))}
+            </div>
+            <div className="rounded-lg border bg-muted/20 p-3 text-sm">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="font-medium">Razorpay fallback test</div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    Kept only for India gateway testing while Paddle is evaluated. Use the INR 1 test payment if you need to compare checkout behavior. If Razorpay asks for contact details, use a real-looking 10-digit mobile number.
+                  </div>
+                </div>
+                <Button
+                  className="sm:shrink-0"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => startRazorpayCheckout({
+                    amountPaise: 100,
+                    checkoutId: "razorpay-test-payment",
+                    description: "Meridian INR 1 checkout test",
+                    receipt: "razorpay-test-1-inr",
+                  })}
+                  disabled={checkoutLoadingId === "razorpay-test-payment"}
+                >
+                  {checkoutLoadingId === "razorpay-test-payment" ? "Opening Razorpay..." : "Test INR 1 payment"}
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -6915,15 +7050,20 @@ function BillingSection({
                   className="mt-3"
                   size="sm"
                   variant="outline"
-                  onClick={() => startRazorpayCheckout({
-                    amountPaise: pack.inr * 100,
+                  onClick={() => startPaddleCheckout({
                     checkoutId: `credits-${pack.credits}`,
                     description: `${formatBillingNumber(pack.credits)} Meridian credits`,
-                    receipt: `credits-${pack.credits}`.slice(0, 40),
                   })}
-                  disabled={checkoutLoadingId === `credits-${pack.credits}`}
+                  disabled={
+                    checkoutLoadingId === `credits-${pack.credits}` ||
+                    !isPaddleCheckoutReady({ clientToken: paddleClientToken, priceId: paddlePriceIdsByCheckoutId[`credits-${pack.credits}`] })
+                  }
                 >
-                  {checkoutLoadingId === `credits-${pack.credits}` ? "Opening Razorpay..." : `Buy ${formatBillingNumber(pack.credits)} credits`}
+                  {!paddlePriceIdsByCheckoutId[`credits-${pack.credits}`]
+                    ? "Configure Paddle price"
+                    : checkoutLoadingId === `credits-${pack.credits}`
+                    ? "Opening Paddle..."
+                    : `Buy ${formatBillingNumber(pack.credits)} credits`}
                 </Button>
               </div>
             ))}
