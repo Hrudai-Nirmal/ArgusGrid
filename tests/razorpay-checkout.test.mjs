@@ -66,6 +66,8 @@ test("Razorpay routes and Billing UI wire Standard Checkout without exposing key
   assert.match(dashboard, /NEXT_PUBLIC_RAZORPAY_KEY_ID/)
   assert.match(dashboard, /prefill/)
   assert.match(dashboard, /contact/)
+  assert.doesNotMatch(dashboard, /9999999999/)
+  assert.match(dashboard, /8012345678/)
   assert.match(dashboard, /readonly/)
   assert.doesNotMatch(dashboard, /method:\s*"card"/)
   assert.match(dashboard, /payment\.failed/)

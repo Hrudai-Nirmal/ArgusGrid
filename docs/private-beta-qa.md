@@ -49,6 +49,7 @@ Use this checklist for production validation on `https://meridian.hrudainirmal.i
 - Confirm Credit pool shows 500, 2,000, and 10,000 credit packs with USD and INR rates.
 - Click `Test INR 1 payment`; confirm the Razorpay modal opens with the low-value checkout path and safe customer prefill.
 - Use Razorpay's official test cards first. UPI QR and specific netbanking banks, including HDFC, may be unavailable in Razorpay test mode depending on account/payment-method configuration.
+- If Razorpay asks for contact details, use a real-looking 10-digit mobile number. Obvious dummy/repeating values such as `9999999999` can be rejected before the payment method step.
 - If checkout stalls, first confirm `/api/create-order` returned `200` with an order id, then inspect Razorpay-owned `api.razorpay.com` failures separately. Disable browser privacy/ad-block extensions during checkout QA because Razorpay's risk/fraud scripts can be blocked before the mock payment page appears.
 - Click a paid plan or credit-pack checkout button with server-side Razorpay test keys configured, such as `Upgrade to Solo Beta` or `Buy 500 credits`; confirm the Razorpay modal opens.
 - Complete a Razorpay test payment and confirm Meridian verifies the payment signature.

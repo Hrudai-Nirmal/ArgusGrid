@@ -6734,7 +6734,7 @@ function BillingSection({
   const razorpayPublicKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ?? ""
   const checkoutPrefillName = currentUser.name ?? "Meridian Test User"
   const checkoutPrefillEmail = currentUser.email ?? "test@meridian.local"
-  const checkoutPrefillContact = "9999999999"
+  const checkoutPrefillContact = "8012345678"
 
   const startRazorpayCheckout = async ({
     amountPaise,
@@ -6846,7 +6846,7 @@ function BillingSection({
                 <div>
                   <div className="font-medium">Razorpay test checkout</div>
                   <div className="mt-1 text-xs text-muted-foreground">
-                    Use the INR 1 test payment to verify checkout before trying plan or credit purchases. Paid actions below are labeled like Upgrade to Solo Beta and Buy 500 credits. Successful payments are verified now; plan and credit fulfilment still lands in the billing ledger milestone.
+                    Use the INR 1 test payment to verify checkout before trying plan or credit purchases. If Razorpay asks for contact details, use a real-looking 10-digit mobile number; obvious dummy numbers can be rejected by Checkout. Paid actions below are labeled like Upgrade to Solo Beta and Buy 500 credits. Successful payments are verified now; plan and credit fulfilment still lands in the billing ledger milestone.
                   </div>
                 </div>
                 <Button
