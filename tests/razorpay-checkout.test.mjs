@@ -67,6 +67,8 @@ test("Razorpay routes and Billing UI wire Standard Checkout without exposing key
   assert.match(dashboard, /payment\.failed/)
   assert.match(dashboard, /ondismiss/)
   assert.match(dashboard, /Razorpay test checkout/)
+  assert.match(dashboard, /Test INR 1 payment/)
+  assert.match(dashboard, /amountPaise: 100/)
   assert.match(dashboard, /Upgrade to Solo Beta/)
   assert.match(dashboard, /Buy 500 credits/)
   assert.match(envExample, /RAZORPAY_KEY_ID=/)

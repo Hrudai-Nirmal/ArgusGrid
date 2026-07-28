@@ -47,6 +47,7 @@ Use this checklist for production validation on `https://meridian.hrudainirmal.i
 - Open `Billing` from the main sidebar and confirm it is separate from `Account`, `Settings`, and `Testing`.
 - Confirm Plans show Free Sandbox, Solo Beta, Agency Beta, and Enterprise Pilot with USD and INR monthly rates.
 - Confirm Credit pool shows 500, 2,000, and 10,000 credit packs with USD and INR rates.
+- Click `Test INR 1 payment`; confirm the Razorpay modal opens with the low-value checkout path.
 - Click a paid plan or credit-pack checkout button with server-side Razorpay test keys configured, such as `Upgrade to Solo Beta` or `Buy 500 credits`; confirm the Razorpay modal opens.
 - Complete a Razorpay test payment and confirm Meridian verifies the payment signature.
 - Confirm failed payment and modal dismiss states show clear non-secret messages.

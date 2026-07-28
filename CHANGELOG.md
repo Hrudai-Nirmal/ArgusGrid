@@ -18,6 +18,7 @@
 - Added Razorpay Standard Checkout order creation, frontend modal launch from Billing, and server-side payment signature verification for test purchases.
 - Made Billing checkout actions explicit with a visible Razorpay helper panel, `Upgrade to ...` plan buttons, and `Buy ... credits` credit-pack buttons.
 - Made Billing checkout resilient when `NEXT_PUBLIC_RAZORPAY_KEY_ID` is missing by returning the public checkout key id from the authenticated order API.
+- Added a dedicated `Test INR 1 payment` button in Billing for low-risk Razorpay checkout validation.
 
 ## 0.1.0
 

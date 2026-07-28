@@ -6826,9 +6826,27 @@ function BillingSection({
           </CardHeader>
           <CardContent className="grid gap-3">
             <div className="rounded-lg border bg-muted/20 p-3 text-sm">
-              <div className="font-medium">Razorpay test checkout</div>
-              <div className="mt-1 text-xs text-muted-foreground">
-                Choose a paid plan or credit pack to open Razorpay. Look for buttons such as Upgrade to Solo Beta and Buy 500 credits. Successful payments are verified now; plan and credit fulfilment still lands in the billing ledger milestone.
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="font-medium">Razorpay test checkout</div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    Use the INR 1 test payment to verify checkout before trying plan or credit purchases. Paid actions below are labeled like Upgrade to Solo Beta and Buy 500 credits. Successful payments are verified now; plan and credit fulfilment still lands in the billing ledger milestone.
+                  </div>
+                </div>
+                <Button
+                  className="sm:shrink-0"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => startRazorpayCheckout({
+                    amountPaise: 100,
+                    checkoutId: "razorpay-test-payment",
+                    description: "Meridian INR 1 checkout test",
+                    receipt: "razorpay-test-1-inr",
+                  })}
+                  disabled={checkoutLoadingId === "razorpay-test-payment"}
+                >
+                  {checkoutLoadingId === "razorpay-test-payment" ? "Opening Razorpay..." : "Test INR 1 payment"}
+                </Button>
               </div>
               {checkoutMessage ? <div className="mt-2 text-xs text-muted-foreground">{checkoutMessage}</div> : null}
             </div>
