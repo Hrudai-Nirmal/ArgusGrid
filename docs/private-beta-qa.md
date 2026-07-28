@@ -47,11 +47,13 @@ Use this checklist for production validation on `https://meridian.hrudainirmal.i
 - Open `Billing` from the main sidebar and confirm it is separate from `Account`, `Settings`, and `Testing`.
 - Confirm Plans show Free Sandbox, Solo Beta, Agency Beta, and Enterprise Pilot with USD and INR monthly rates.
 - Confirm Credit pool shows 500, 2,000, and 10,000 credit packs with USD and INR rates.
-- In Paddle sandbox, create monthly prices for Solo Beta, Agency Beta, and Enterprise Pilot plus one-time prices for 500, 2,000, and 10,000 credit packs. Add the Paddle client-side token and matching `NEXT_PUBLIC_PADDLE_PRICE_*` values to Vercel Production, then redeploy.
+- In Paddle sandbox, create monthly prices for Solo Beta, Agency Beta, and Enterprise Pilot plus one-time prices for 500, 2,000, and 10,000 credit packs. Add the Paddle client-side token, matching `NEXT_PUBLIC_PADDLE_PRICE_*` values, server-side sandbox API key, `PADDLE_ENVIRONMENT=sandbox`, and `PADDLE_NOTIFICATION_WEBHOOK_SECRET` to Vercel Production, then redeploy.
+- Confirm the Paddle notification destination points at `https://meridian.hrudainirmal.in/api/paddle/webhook` and subscribes to customer, subscription, and transaction lifecycle events.
 - Click a paid plan or credit-pack checkout button and confirm the Paddle overlay opens. In Paddle sandbox, use card `4242 4242 4242 4242`, any name, any future expiry, and security code `100`.
-- Confirm completed Paddle checkout says fulfilment is not wired yet; do not treat this as active plan/credit entitlement until the billing ledger and Paddle webhook milestone lands.
+- Confirm completed Paddle checkout says Meridian is waiting for the verified Paddle webhook.
 - Confirm failed payment and modal dismiss states show clear non-secret messages.
-- Confirm successful checkout says fulfilment is not wired yet; do not treat this as active plan/credit entitlement until the billing ledger milestone lands.
+- Refresh Billing after the webhook arrives and confirm Subscription management shows the mirrored plan/customer state and Billing history shows the transaction.
+- As an owner/admin, click `Manage subscription` and confirm Paddle customer portal opens. Confirm viewers cannot mint a portal session.
 - Confirm Usage graphs load live bounded 30-day snapshots for nodes, workflow runs, metric samples, notification jobs, report links, and active telemetry tokens.
 - Refresh usage and confirm counts remain secret-safe: no raw tokens, webhook URLs, Slack URLs, signing secrets, encrypted payloads, env values, or credential bodies.
 - Click `Know more` in Operations Policy and confirm the explainer says policies are project-specific and currently persisted/advisory until enforcement is wired into schedulers, retention, and spend limits.

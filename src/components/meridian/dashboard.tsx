@@ -436,6 +436,47 @@ type ProjectUsageSnapshot = {
     summary: string
   }[]
 }
+type BillingStatusSnapshot = {
+  environment: "sandbox" | "production"
+  checkoutConfigured: boolean
+  webhookConfigured: boolean
+  serverConfigured: boolean
+  subscription: {
+    id: string | null
+    status: string
+    billingKey: string | null
+    priceId: string | null
+    productId: string | null
+    currencyCode: string | null
+    currentPeriodStartsAt: string | null
+    currentPeriodEndsAt: string | null
+    nextBilledAt: string | null
+    scheduledChangeAction: string | null
+    scheduledChangeEffectiveAt: string | null
+    canceledAt: string | null
+    access: {
+      hasAccess: boolean
+      label: string
+      tone: "good" | "warn" | "muted"
+    }
+  }
+  customer: {
+    hasCustomer: boolean
+    email: string | null
+    updatedAt: string | null
+  }
+  transactions: {
+    id: string
+    status: string
+    billingKey: string | null
+    creditAmount: number | null
+    totalAmount: number | null
+    currencyCode: string | null
+    completedAt: string | null
+    billedAt: string | null
+    createdAt: string
+  }[]
+}
 type ProjectOperationsPolicyRecord = WorkspacePayload["project"]["operationsPolicy"]
 type OperationalStatus = "ready" | "warning" | "blocked"
 type ProductionObservabilitySnapshot = {
@@ -1046,6 +1087,8 @@ export function MeridianDashboard({
   const [operationsPolicyMessage, setOperationsPolicyMessage] = useState("")
   const [projectUsage, setProjectUsage] = useState<ProjectUsageSnapshot | null>(null)
   const [projectUsageMessage, setProjectUsageMessage] = useState("")
+  const [billingStatus, setBillingStatus] = useState<BillingStatusSnapshot | null>(null)
+  const [billingStatusMessage, setBillingStatusMessage] = useState("")
   const [productionObservability, setProductionObservability] = useState<ProductionObservabilitySnapshot | null>(null)
   const [productionObservabilityMessage, setProductionObservabilityMessage] = useState("")
   const [reportShares, setReportShares] = useState<ReportShareRecord[]>([])
@@ -1798,6 +1841,38 @@ export function MeridianDashboard({
     setProjectUsageMessage("Project usage loaded for the last 30 days.")
   }, [initialWorkspace.project.id])
 
+  const refreshBillingStatus = useCallback(async () => {
+    setBillingStatusMessage("Loading billing status...")
+    const response = await fetch(`/api/billing?projectId=${encodeURIComponent(initialWorkspace.project.id)}`)
+    const payload = await response.json().catch(() => null)
+    if (!response.ok) {
+      setBillingStatusMessage(payload?.error ?? "Billing status failed to load.")
+      return
+    }
+    setBillingStatus(payload.billing ?? null)
+    setBillingStatusMessage("Billing status loaded from verified Paddle records.")
+  }, [initialWorkspace.project.id])
+
+  const openCustomerPortal = useCallback(async () => {
+    if (!canManageOrganization) {
+      setBillingStatusMessage("Only owners and admins can manage subscriptions.")
+      return
+    }
+    setBillingStatusMessage("Opening Paddle customer portal...")
+    const response = await fetch("/api/billing/portal", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId: initialWorkspace.project.id }),
+    })
+    const payload = await response.json().catch(() => null)
+    if (!response.ok || typeof payload?.url !== "string") {
+      setBillingStatusMessage(payload?.error ?? "Paddle customer portal failed to open.")
+      return
+    }
+    window.open(payload.url, "_blank", "noopener,noreferrer")
+    setBillingStatusMessage("Paddle customer portal opened in a new tab.")
+  }, [canManageOrganization, initialWorkspace.project.id])
+
   const loadProductionObservability = async () => {
     setProductionObservabilityMessage("Loading production observability...")
     const response = await fetch(`/api/projects/${initialWorkspace.project.id}/operations/overview`)
@@ -1881,6 +1956,16 @@ export function MeridianDashboard({
     }
     return undefined
   }, [activeSection, loadProjectUsage, projectUsage, projectUsageMessage])
+
+  useEffect(() => {
+    if (activeSection === "billing" && !billingStatus && !billingStatusMessage) {
+      const billingTimer = window.setTimeout(() => {
+        void refreshBillingStatus()
+      }, 0)
+      return () => window.clearTimeout(billingTimer)
+    }
+    return undefined
+  }, [activeSection, billingStatus, billingStatusMessage, refreshBillingStatus])
 
   const sendTestEmail = async () => {
     if (!canManageOrganization) {
@@ -3684,10 +3769,14 @@ export function MeridianDashboard({
             nodes={endpointNodes}
             projectUsage={projectUsage}
             projectUsageMessage={projectUsageMessage}
+            billingStatus={billingStatus}
+            billingStatusMessage={billingStatusMessage}
             operationsPolicy={operationsPolicy}
             operationsPolicyMessage={operationsPolicyMessage}
             canManageOrganization={canManageOrganization}
             onLoadProjectUsage={loadProjectUsage}
+            onRefreshBillingStatus={refreshBillingStatus}
+            onOpenCustomerPortal={openCustomerPortal}
             onOperationsPolicyChange={setOperationsPolicy}
             onSaveOperationsPolicy={saveOperationsPolicy}
           />
@@ -6634,6 +6723,14 @@ function formatBillingPrice(usd: number, inr: number) {
   return usd === 0 ? "$0 / ₹0" : `$${formatBillingNumber(usd)} / ₹${formatBillingNumber(inr)}`
 }
 
+function formatPaddleMoney(amount: number | null, currencyCode: string | null) {
+  if (amount === null || !currencyCode) return "Amount unavailable"
+  return new Intl.NumberFormat("en", {
+    style: "currency",
+    currency: currencyCode,
+  }).format(amount / 100)
+}
+
 function UsageGraphRow({ label, value, limit, detail }: { label: string; value: number; limit: number | null; detail: string }) {
   const percent = limit ? Math.min(100, Math.round((value / limit) * 100)) : 0
 
@@ -6708,10 +6805,14 @@ function BillingSection({
   nodes,
   projectUsage,
   projectUsageMessage,
+  billingStatus,
+  billingStatusMessage,
   operationsPolicy,
   operationsPolicyMessage,
   canManageOrganization,
   onLoadProjectUsage,
+  onRefreshBillingStatus,
+  onOpenCustomerPortal,
   onOperationsPolicyChange,
   onSaveOperationsPolicy,
 }: {
@@ -6720,10 +6821,14 @@ function BillingSection({
   nodes: EndpointNodeData[]
   projectUsage: ProjectUsageSnapshot | null
   projectUsageMessage: string
+  billingStatus: BillingStatusSnapshot | null
+  billingStatusMessage: string
   operationsPolicy: ProjectOperationsPolicyRecord
   operationsPolicyMessage: string
   canManageOrganization: boolean
   onLoadProjectUsage: () => Promise<void>
+  onRefreshBillingStatus: () => Promise<void>
+  onOpenCustomerPortal: () => Promise<void>
   onOperationsPolicyChange: (policy: ProjectOperationsPolicyRecord) => void
   onSaveOperationsPolicy: () => Promise<void>
 }) {
@@ -6733,6 +6838,7 @@ function BillingSection({
   const [isPolicyDetailsOpen, setIsPolicyDetailsOpen] = useState(false)
   const [checkoutMessage, setCheckoutMessage] = useState("")
   const [checkoutLoadingId, setCheckoutLoadingId] = useState<string | null>(null)
+  const activeBillingKey = billingStatus?.subscription.billingKey ?? "free_sandbox"
   const paddleClientToken = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN ?? ""
   const paddleEnvironment = normalizePaddleEnvironment(process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT)
   const paddlePriceIdsByCheckoutId: Record<string, string> = {
@@ -6776,7 +6882,8 @@ function BillingSection({
         eventCallback: (event) => {
           if (event.name === "checkout.completed") {
             setCheckoutLoadingId(null)
-            setCheckoutMessage("Paddle checkout completed. Plan and credit fulfilment will be wired in the billing ledger milestone.")
+            setCheckoutMessage("Paddle checkout completed. Waiting for the verified Paddle webhook to update your subscription or credits.")
+            void onRefreshBillingStatus()
           }
           if (event.name === "checkout.closed") {
             setCheckoutLoadingId(null)
@@ -6806,6 +6913,73 @@ function BillingSection({
   return (
     <SectionShell>
       <div className="mx-auto grid max-w-7xl gap-5">
+        <Card id="billing-subscription">
+          <CardHeader className="flex flex-row items-start justify-between gap-3">
+            <div>
+              <CardTitle>Subscription management</CardTitle>
+              <CardDescription>Verified Paddle webhook state for this project and organization. Payment credentials stay inside Paddle.</CardDescription>
+            </div>
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button size="sm" variant="outline" onClick={onRefreshBillingStatus}>Refresh billing</Button>
+              <Button size="sm" onClick={onOpenCustomerPortal} disabled={!canManageOrganization || !billingStatus?.customer.hasCustomer}>
+                Manage subscription
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-3 lg:grid-cols-[0.9fr_1.1fr]">
+            <div className="rounded-lg border bg-muted/20 p-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant={billingStatus?.subscription.access.tone === "good" ? "secondary" : billingStatus?.subscription.access.tone === "warn" ? "destructive" : "outline"}>
+                  {billingStatus?.subscription.access.label ?? "Not loaded"}
+                </Badge>
+                <Badge variant="outline">{billingStatus?.environment ?? paddleEnvironment}</Badge>
+                {billingStatus?.webhookConfigured ? <Badge variant="secondary">Webhook configured</Badge> : <Badge variant="outline">Webhook missing</Badge>}
+                {billingStatus?.serverConfigured ? <Badge variant="secondary">Portal ready</Badge> : <Badge variant="outline">Server key missing</Badge>}
+              </div>
+              <div className="mt-3 grid gap-1 text-sm">
+                <div className="font-medium">
+                  {activeBillingKey === "free_sandbox" ? "Free Sandbox" : activeBillingKey.replaceAll("_", " ")}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Next billed: {formatDateTime(billingStatus?.subscription.nextBilledAt)}. Period ends: {formatDateTime(billingStatus?.subscription.currentPeriodEndsAt)}.
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Customer: {billingStatus?.customer.email ?? (billingStatus?.customer.hasCustomer ? "Stored in Paddle" : "No Paddle customer yet")}.
+                </div>
+                {billingStatusMessage ? <div className="text-xs text-muted-foreground">{billingStatusMessage}</div> : null}
+              </div>
+            </div>
+            <div className="rounded-lg border bg-background p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="font-medium">Billing history</div>
+                  <div className="text-xs text-muted-foreground">Latest verified Paddle transactions mirrored by signed webhooks.</div>
+                </div>
+                <Badge variant="outline">{billingStatus?.transactions.length ?? 0} shown</Badge>
+              </div>
+              <div className="mt-3 grid gap-2">
+                {billingStatus?.transactions.length ? billingStatus.transactions.map((transaction) => (
+                  <div key={transaction.id} className="grid gap-1 rounded-lg border bg-muted/20 p-3 text-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-medium capitalize">{transaction.billingKey?.replaceAll("_", " ") ?? "Paddle transaction"}</span>
+                      <Badge variant={transaction.status === "paid" || transaction.status === "completed" ? "secondary" : "outline"}>{transaction.status}</Badge>
+                    </div>
+                    <div className="text-muted-foreground">
+                      {formatPaddleMoney(transaction.totalAmount, transaction.currencyCode)}
+                      {transaction.creditAmount ? ` / ${formatBillingNumber(transaction.creditAmount)} credits` : ""}
+                    </div>
+                    <div className="text-muted-foreground">Recorded {formatDateTime(transaction.completedAt ?? transaction.createdAt)}</div>
+                  </div>
+                )) : (
+                  <div className="rounded-lg border border-dashed p-4 text-xs text-muted-foreground">
+                    No verified Paddle transactions are mirrored yet. Complete a sandbox checkout and wait for the signed webhook, then refresh billing.
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card id="billing-plans">
           <CardHeader>
             <CardTitle>Plans</CardTitle>
@@ -6817,7 +6991,7 @@ function BillingSection({
                 <div>
                   <div className="font-medium">Paddle Billing checkout</div>
                   <div className="mt-1 text-xs text-muted-foreground">
-                    Paddle is the primary SaaS checkout path. Add a Paddle client-side token and one `pri_...` price ID per paid plan or credit pack, then use the upgrade and credit buttons below. Successful payments are captured by Paddle now; Meridian plan and credit fulfilment still lands in the billing ledger milestone.
+                    Paddle is the primary SaaS checkout path. Add a Paddle client-side token, server API key, signed webhook secret, and one `pri_...` price ID per paid plan or credit pack. Successful payments update the subscription panel through verified Paddle webhooks.
                     {!paddleClientToken ? " Paddle is not configured yet." : ` Paddle environment: ${paddleEnvironment}.`}
                   </div>
                 </div>

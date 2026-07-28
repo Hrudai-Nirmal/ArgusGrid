@@ -76,6 +76,9 @@ model User {
   ingestionTokens IngestionToken[]
   reportShares    ReportShare[]
   reportPresets   ReportPreset[]
+  paddleCustomers      PaddleCustomer[]
+  paddleSubscriptions  PaddleSubscription[]
+  paddleTransactions   PaddleTransaction[]
   createdAt       DateTime                 @default(now())
   updatedAt       DateTime                 @updatedAt
 }
@@ -126,6 +129,9 @@ model Organization {
   invitations         TeamInvitation[]
   projects            Project[]
   auditLogs           AuditLog[]
+  paddleCustomers     PaddleCustomer[]
+  paddleSubscriptions PaddleSubscription[]
+  paddleTransactions  PaddleTransaction[]
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
 }
@@ -179,6 +185,8 @@ model Project {
   rateLimitBuckets    IngestionRateLimitBucket[]
   auditLogs           AuditLog[]
   operationsPolicy    ProjectOperationsPolicy?
+  paddleSubscriptions PaddleSubscription[]
+  paddleTransactions  PaddleTransaction[]
   archivedAt          DateTime?
   createdAt           DateTime                    @default(now())
   updatedAt           DateTime                    @updatedAt
@@ -202,6 +210,123 @@ model ProjectOperationsPolicy {
 
   @@index([operationsMode])
   @@index([notificationReliability])
+}
+
+model PaddleCustomer {
+  id               String               @id @default(cuid())
+  paddleCustomerId String               @unique
+  email            String?
+  name             String?
+  environment      String               @default("sandbox")
+  userId           String?
+  organizationId   String?
+  user             User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+  organization     Organization?        @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  subscriptions    PaddleSubscription[]
+  transactions     PaddleTransaction[]
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  @@index([email])
+  @@index([userId])
+  @@index([organizationId])
+  @@index([environment])
+}
+
+model PaddleSubscription {
+  id                            String           @id @default(cuid())
+  paddleSubscriptionId          String           @unique
+  paddleCustomerId              String?
+  status                        String
+  billingKey                    String?
+  priceId                       String?
+  productId                     String?
+  currencyCode                  String?
+  currentBillingPeriodStartsAt  DateTime?
+  currentBillingPeriodEndsAt    DateTime?
+  nextBilledAt                  DateTime?
+  scheduledChangeAction         String?
+  scheduledChangeEffectiveAt    DateTime?
+  canceledAt                    DateTime?
+  environment                   String           @default("sandbox")
+  items                         Json?
+  customData                    Json?
+  userId                        String?
+  organizationId                String?
+  projectId                     String?
+  customer                      PaddleCustomer?  @relation(fields: [paddleCustomerId], references: [paddleCustomerId], onDelete: SetNull)
+  user                          User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  organization                  Organization?    @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  project                       Project?         @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  transactions                  PaddleTransaction[]
+  createdAt                     DateTime         @default(now())
+  updatedAt                     DateTime         @updatedAt
+
+  @@index([paddleCustomerId])
+  @@index([userId])
+  @@index([organizationId, status])
+  @@index([projectId, status])
+  @@index([priceId])
+  @@index([billingKey])
+  @@index([environment])
+}
+
+model PaddleTransaction {
+  id                    String              @id @default(cuid())
+  paddleTransactionId   String              @unique
+  paddleCustomerId      String?
+  paddleSubscriptionId  String?
+  status                String
+  billingKey            String?
+  checkoutId            String?
+  creditAmount          Int?
+  priceId               String?
+  productId             String?
+  totalAmount           Int?
+  currencyCode          String?
+  billedAt              DateTime?
+  completedAt           DateTime?
+  environment           String              @default("sandbox")
+  details               Json?
+  customData            Json?
+  userId                String?
+  organizationId        String?
+  projectId             String?
+  customer              PaddleCustomer?     @relation(fields: [paddleCustomerId], references: [paddleCustomerId], onDelete: SetNull)
+  subscription          PaddleSubscription? @relation(fields: [paddleSubscriptionId], references: [paddleSubscriptionId], onDelete: SetNull)
+  user                  User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  organization          Organization?       @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  project               Project?            @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  @@index([paddleCustomerId])
+  @@index([paddleSubscriptionId])
+  @@index([userId])
+  @@index([organizationId, completedAt])
+  @@index([projectId, completedAt])
+  @@index([priceId])
+  @@index([billingKey])
+  @@index([environment])
+}
+
+model PaddleWebhookEvent {
+  id             String    @id @default(cuid())
+  paddleEventId  String    @unique
+  eventType      String
+  resourceId     String?
+  environment    String    @default("sandbox")
+  status         String    @default("PROCESSED")
+  errorSummary   String?
+  occurredAt     DateTime?
+  processedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([eventType, createdAt])
+  @@index([status, createdAt])
+  @@index([resourceId])
+  @@index([environment])
 }
 
 model ProjectCategory {

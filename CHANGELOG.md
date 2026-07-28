@@ -16,6 +16,7 @@
 - Added a dedicated Billing section with conservative USD/INR beta plan modeling, prepaid credit packs, bounded usage graphs, and owner/admin project operations policy controls.
 - Clarified Billing usage as live bounded snapshots and added Operations Policy explainers for project scope and current advisory enforcement status.
 - Removed the earlier payment-gateway fallback experiment after sandbox checkout proved unreliable, leaving Paddle as the only active checkout path.
+- Added Paddle Billing sync v1 with signed webhooks, Postgres customer/subscription/transaction mirrors, Billing subscription status, Billing history, and owner/admin customer portal sessions.
 
 ## 0.1.0
 
