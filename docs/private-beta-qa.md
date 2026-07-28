@@ -50,12 +50,6 @@ Use this checklist for production validation on `https://meridian.hrudainirmal.i
 - In Paddle sandbox, create monthly prices for Solo Beta, Agency Beta, and Enterprise Pilot plus one-time prices for 500, 2,000, and 10,000 credit packs. Add the Paddle client-side token and matching `NEXT_PUBLIC_PADDLE_PRICE_*` values to Vercel Production, then redeploy.
 - Click a paid plan or credit-pack checkout button and confirm the Paddle overlay opens. In Paddle sandbox, use card `4242 4242 4242 4242`, any name, any future expiry, and security code `100`.
 - Confirm completed Paddle checkout says fulfilment is not wired yet; do not treat this as active plan/credit entitlement until the billing ledger and Paddle webhook milestone lands.
-- Click `Test INR 1 payment`; confirm the Razorpay modal opens with the low-value checkout path and safe customer prefill.
-- Use Razorpay's official test cards first. UPI QR and specific netbanking banks, including HDFC, may be unavailable in Razorpay test mode depending on account/payment-method configuration.
-- If Razorpay asks for contact details, use a real-looking 10-digit mobile number. Obvious dummy/repeating values such as `9999999999` can be rejected before the payment method step.
-- If checkout stalls, first confirm `/api/create-order` returned `200` with an order id, then inspect Razorpay-owned `api.razorpay.com` failures separately. Disable browser privacy/ad-block extensions during checkout QA because Razorpay's risk/fraud scripts can be blocked before the mock payment page appears.
-- Click a paid plan or credit-pack checkout button with server-side Razorpay test keys configured, such as `Upgrade to Solo Beta` or `Buy 500 credits`; confirm the Razorpay modal opens.
-- Complete a Razorpay test payment and confirm Meridian verifies the payment signature.
 - Confirm failed payment and modal dismiss states show clear non-secret messages.
 - Confirm successful checkout says fulfilment is not wired yet; do not treat this as active plan/credit entitlement until the billing ledger milestone lands.
 - Confirm Usage graphs load live bounded 30-day snapshots for nodes, workflow runs, metric samples, notification jobs, report links, and active telemetry tokens.
@@ -209,7 +203,7 @@ Use this checklist for production validation on `https://meridian.hrudainirmal.i
 ## Security Hardening
 
 - Confirm `/` and `/api/health` include browser security headers: `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, and `X-Frame-Options`.
-- Confirm the global `Permissions-Policy` still denies camera, microphone, geolocation, USB, and browser topics, while allowing Razorpay checkout/payment capability for Billing.
+- Confirm the global `Permissions-Policy` still denies camera, microphone, geolocation, payment, accelerometer, gyroscope, USB, and browser topics.
 - Confirm public report pages and report image routes are no-store, revoked/expired links return 404, and report pages never show private team data.
 - Confirm owner/admin-only routes reject member/viewer access for telemetry tokens, webhooks, Slack destinations, report shares, report presets, CSV exports, manual polling, notification-job retry/cancel, and production observability.
 - Confirm logs, reports, exports, observability, and onboarding snippets do not expose raw tokens, webhook URLs, Slack URLs, signing secrets, encrypted payloads, database URLs, OAuth secrets, cron secrets, email provider keys, or env values.

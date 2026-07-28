@@ -6651,24 +6651,6 @@ function UsageGraphRow({ label, value, limit, detail }: { label: string; value: 
   )
 }
 
-type RazorpayCheckoutResponse = {
-  razorpay_payment_id: string
-  razorpay_order_id: string
-  razorpay_signature: string
-}
-
-type RazorpayCheckoutFailure = {
-  error?: {
-    description?: string
-    reason?: string
-  }
-}
-
-type RazorpayCheckoutInstance = {
-  open: () => void
-  on: (eventName: "payment.failed", handler: (response: RazorpayCheckoutFailure) => void) => void
-}
-
 type PaddleCheckoutEvent = {
   name?: string
 }
@@ -6690,7 +6672,6 @@ type PaddleInstance = {
 
 declare global {
   interface Window {
-    Razorpay?: new (options: Record<string, unknown>) => RazorpayCheckoutInstance
     Paddle?: PaddleInstance
   }
 }
@@ -6717,32 +6698,6 @@ function loadPaddleCheckoutScript() {
     script.async = true
     script.onload = () => resolve()
     script.onerror = () => reject(new Error("Paddle checkout failed to load."))
-    document.body.appendChild(script)
-  })
-}
-
-function loadRazorpayCheckoutScript() {
-  return new Promise<void>((resolve, reject) => {
-    if (typeof window === "undefined") {
-      reject(new Error("Checkout is available only in the browser."))
-      return
-    }
-    if (window.Razorpay) {
-      resolve()
-      return
-    }
-    const existingScript = document.querySelector<HTMLScriptElement>('script[src="https://checkout.razorpay.com/v1/checkout.js"]')
-    if (existingScript) {
-      existingScript.addEventListener("load", () => resolve(), { once: true })
-      existingScript.addEventListener("error", () => reject(new Error("Razorpay checkout failed to load.")), { once: true })
-      return
-    }
-
-    const script = document.createElement("script")
-    script.src = "https://checkout.razorpay.com/v1/checkout.js"
-    script.async = true
-    script.onload = () => resolve()
-    script.onerror = () => reject(new Error("Razorpay checkout failed to load."))
     document.body.appendChild(script)
   })
 }
@@ -6778,7 +6733,6 @@ function BillingSection({
   const [isPolicyDetailsOpen, setIsPolicyDetailsOpen] = useState(false)
   const [checkoutMessage, setCheckoutMessage] = useState("")
   const [checkoutLoadingId, setCheckoutLoadingId] = useState<string | null>(null)
-  const razorpayPublicKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ?? ""
   const paddleClientToken = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN ?? ""
   const paddleEnvironment = normalizePaddleEnvironment(process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT)
   const paddlePriceIdsByCheckoutId: Record<string, string> = {
@@ -6789,9 +6743,7 @@ function BillingSection({
     "credits-2000": process.env.NEXT_PUBLIC_PADDLE_PRICE_CREDITS_2000 ?? "",
     "credits-10000": process.env.NEXT_PUBLIC_PADDLE_PRICE_CREDITS_10000 ?? "",
   }
-  const checkoutPrefillName = currentUser.name ?? "Meridian Test User"
   const checkoutPrefillEmail = currentUser.email ?? "test@meridian.local"
-  const checkoutPrefillContact = "8012345678"
 
   const startPaddleCheckout = async ({
     checkoutId,
@@ -6848,102 +6800,6 @@ function BillingSection({
     } catch (checkoutError) {
       setCheckoutLoadingId(null)
       setCheckoutMessage(checkoutError instanceof Error ? checkoutError.message : "Paddle checkout failed to start.")
-    }
-  }
-
-  const startRazorpayCheckout = async ({
-    amountPaise,
-    description,
-    checkoutId,
-    receipt,
-  }: {
-    amountPaise: number
-    description: string
-    checkoutId: string
-    receipt: string
-  }) => {
-    const stopCheckoutWithMessage = (message: string) => {
-      setCheckoutLoadingId(null)
-      setCheckoutMessage(message)
-    }
-
-    setCheckoutLoadingId(checkoutId)
-    setCheckoutMessage("Creating Razorpay order...")
-    try {
-      await loadRazorpayCheckoutScript()
-      const orderResponse = await fetch("/api/create-order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: amountPaise,
-          currency: "INR",
-          receipt,
-        }),
-      })
-      const orderPayload = await orderResponse.json().catch(() => null)
-      if (!orderResponse.ok || !orderPayload?.order_id) {
-        stopCheckoutWithMessage(orderPayload?.error ?? "Razorpay order creation failed.")
-        return
-      }
-      if (!window.Razorpay) {
-        stopCheckoutWithMessage("Razorpay checkout script loaded, but the payment modal is unavailable.")
-        return
-      }
-      const checkoutKeyId = typeof orderPayload.key_id === "string" && orderPayload.key_id ? orderPayload.key_id : razorpayPublicKeyId
-      if (!checkoutKeyId) {
-        stopCheckoutWithMessage("Razorpay public key is unavailable from the order response.")
-        return
-      }
-
-      const checkout = new window.Razorpay({
-        key: checkoutKeyId,
-        amount: orderPayload.amount,
-        currency: orderPayload.currency,
-        name: "Meridian",
-        description,
-        order_id: orderPayload.order_id,
-        prefill: {
-          name: checkoutPrefillName,
-          email: checkoutPrefillEmail,
-          contact: checkoutPrefillContact,
-        },
-        readonly: {
-          name: false,
-          email: false,
-          contact: false,
-        },
-        theme: { color: "#4F46E5" },
-        modal: {
-          ondismiss: () => {
-            setCheckoutLoadingId(null)
-            setCheckoutMessage("Razorpay checkout was closed before payment completed.")
-          },
-        },
-        handler: async (response: RazorpayCheckoutResponse) => {
-          setCheckoutMessage("Verifying Razorpay payment...")
-          const verifyResponse = await fetch("/api/verify-payment", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(response),
-          })
-          const verifyPayload = await verifyResponse.json().catch(() => null)
-          setCheckoutLoadingId(null)
-          setCheckoutMessage(
-            verifyResponse.ok && verifyPayload?.verified
-              ? "Payment verified. Plan and credit fulfilment will be wired in the billing ledger milestone."
-              : verifyPayload?.error ?? "Payment verification failed."
-          )
-        },
-      })
-
-      checkout.on("payment.failed", (response) => {
-        setCheckoutLoadingId(null)
-        setCheckoutMessage(response.error?.description ?? response.error?.reason ?? "Razorpay payment failed.")
-      })
-      checkout.open()
-    } catch (checkoutError) {
-      setCheckoutLoadingId(null)
-      setCheckoutMessage(checkoutError instanceof Error ? checkoutError.message : "Razorpay checkout failed to start.")
     }
   }
 
@@ -7008,30 +6864,6 @@ function BillingSection({
                 </Button>
               </div>
             ))}
-            </div>
-            <div className="rounded-lg border bg-muted/20 p-3 text-sm">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <div className="font-medium">Razorpay fallback test</div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    Kept only for India gateway testing while Paddle is evaluated. Use the INR 1 test payment if you need to compare checkout behavior. If Razorpay asks for contact details, use a real-looking 10-digit mobile number.
-                  </div>
-                </div>
-                <Button
-                  className="sm:shrink-0"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => startRazorpayCheckout({
-                    amountPaise: 100,
-                    checkoutId: "razorpay-test-payment",
-                    description: "Meridian INR 1 checkout test",
-                    receipt: "razorpay-test-1-inr",
-                  })}
-                  disabled={checkoutLoadingId === "razorpay-test-payment"}
-                >
-                  {checkoutLoadingId === "razorpay-test-payment" ? "Opening Razorpay..." : "Test INR 1 payment"}
-                </Button>
-              </div>
             </div>
           </CardContent>
         </Card>
