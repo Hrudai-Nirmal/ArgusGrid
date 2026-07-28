@@ -26,6 +26,9 @@ RESEND_API_KEY="optional-resend-api-key-for-alert-email"
 ALERT_FROM_EMAIL="Meridian <alerts@meridian.hrudainirmal.in>"
 INNGEST_EVENT_KEY="replace-with-production-inngest-event-key"
 INNGEST_SIGNING_KEY="signkey-prod-replace-with-inngest-signing-key"
+RAZORPAY_KEY_ID="replace-with-razorpay-key-id"
+RAZORPAY_KEY_SECRET="replace-with-razorpay-key-secret"
+NEXT_PUBLIC_RAZORPAY_KEY_ID="replace-with-razorpay-key-id"
 ```
 
 Meridian production uses the independently managed Neon project `Meridian` through the server-only `DATABASE_URL`. The Prisma client still supports an integration-managed `NeonDB_POSTGRES_PRISMA_URL` when present, but that variable must not remain configured after an independent-database cutover because it takes precedence. Database and authentication failures emit structured, secret-safe runtime logs with incident IDs; `/api/health` returns matching safe issue metadata, and the login screen blocks OAuth while session persistence is unavailable.
@@ -172,6 +175,8 @@ Workflow ingestion is protected by durable Postgres minute buckets: each ingesti
 Billing is a dedicated sidebar section for beta pricing, prepaid credits, project usage graphs, and the project operations policy. The first beta scheme is intentionally conservative: Free Sandbox is $0 / INR 0, Solo Beta is $59 / INR 4,999, Agency Beta is $179 / INR 14,999, and Enterprise Pilot is $799 / INR 64,999. Prepaid credit packs are 500 credits for $19 / INR 1,599, 2,000 credits for $69 / INR 5,999, and 10,000 credits for $249 / INR 20,999. These are planning/modeling rates only; in-app payment collection is not enabled yet.
 
 Billing -> Usage graphs loads live bounded 30-day snapshots for nodes, workflow runs, metric samples, notification jobs, report links, and active telemetry tokens whenever Billing opens or the user clicks Refresh usage. Billing -> Operations Policy lets owners/admins choose the customer-facing posture for operations mode, polling frequency, notification recovery, retention, and spend protection for the current project only. These policies are persisted and audited today, but most choices are advisory until they are wired into scheduler, retention, and spend-limit enforcement. Users customize outcomes there, while Meridian still controls Neon, Inngest, Vercel, and external scheduler infrastructure centrally so one project cannot create unbounded idle cost.
+
+Billing includes Razorpay Standard Web Checkout for paid plan and credit-pack test purchases. The frontend loads `https://checkout.razorpay.com/v1/checkout.js`, calls `POST /api/create-order`, opens the Razorpay modal, then sends `razorpay_payment_id`, `razorpay_order_id`, and `razorpay_signature` to `POST /api/verify-payment`. The server verifies the signature using `RAZORPAY_KEY_SECRET`; the key secret must never be exposed to the browser. The current integration verifies payment authenticity only. Plan activation, credit ledger entries, invoices, and webhook-backed fulfilment are the next billing milestone before taking real customer payments.
 
 Account is also a dedicated sidebar section. It owns signed-in identity, organization/project context, Team and Settings shortcuts, and the only visible Sign out action.
 

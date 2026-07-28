@@ -6649,6 +6649,56 @@ function UsageGraphRow({ label, value, limit, detail }: { label: string; value: 
   )
 }
 
+type RazorpayCheckoutResponse = {
+  razorpay_payment_id: string
+  razorpay_order_id: string
+  razorpay_signature: string
+}
+
+type RazorpayCheckoutFailure = {
+  error?: {
+    description?: string
+    reason?: string
+  }
+}
+
+type RazorpayCheckoutInstance = {
+  open: () => void
+  on: (eventName: "payment.failed", handler: (response: RazorpayCheckoutFailure) => void) => void
+}
+
+declare global {
+  interface Window {
+    Razorpay?: new (options: Record<string, unknown>) => RazorpayCheckoutInstance
+  }
+}
+
+function loadRazorpayCheckoutScript() {
+  return new Promise<void>((resolve, reject) => {
+    if (typeof window === "undefined") {
+      reject(new Error("Checkout is available only in the browser."))
+      return
+    }
+    if (window.Razorpay) {
+      resolve()
+      return
+    }
+    const existingScript = document.querySelector<HTMLScriptElement>('script[src="https://checkout.razorpay.com/v1/checkout.js"]')
+    if (existingScript) {
+      existingScript.addEventListener("load", () => resolve(), { once: true })
+      existingScript.addEventListener("error", () => reject(new Error("Razorpay checkout failed to load.")), { once: true })
+      return
+    }
+
+    const script = document.createElement("script")
+    script.src = "https://checkout.razorpay.com/v1/checkout.js"
+    script.async = true
+    script.onload = () => resolve()
+    script.onerror = () => reject(new Error("Razorpay checkout failed to load."))
+    document.body.appendChild(script)
+  })
+}
+
 function BillingSection({
   project,
   nodes,
@@ -6676,6 +6726,90 @@ function BillingSection({
   const counts = projectUsage?.counts
   const policyCopy = getOperationsPolicyCopy(operationsPolicy)
   const [isPolicyDetailsOpen, setIsPolicyDetailsOpen] = useState(false)
+  const [checkoutMessage, setCheckoutMessage] = useState("")
+  const [checkoutLoadingId, setCheckoutLoadingId] = useState<string | null>(null)
+  const razorpayPublicKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ?? ""
+
+  const startRazorpayCheckout = async ({
+    amountPaise,
+    description,
+    checkoutId,
+    receipt,
+  }: {
+    amountPaise: number
+    description: string
+    checkoutId: string
+    receipt: string
+  }) => {
+    if (!razorpayPublicKeyId) {
+      setCheckoutMessage("Razorpay public key is not configured.")
+      return
+    }
+
+    setCheckoutLoadingId(checkoutId)
+    setCheckoutMessage("Creating Razorpay order...")
+    try {
+      await loadRazorpayCheckoutScript()
+      const orderResponse = await fetch("/api/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: amountPaise,
+          currency: "INR",
+          receipt,
+        }),
+      })
+      const orderPayload = await orderResponse.json().catch(() => null)
+      if (!orderResponse.ok || !orderPayload?.order_id) {
+        setCheckoutMessage(orderPayload?.error ?? "Razorpay order creation failed.")
+        return
+      }
+      if (!window.Razorpay) {
+        setCheckoutMessage("Razorpay checkout script loaded, but the payment modal is unavailable.")
+        return
+      }
+
+      const checkout = new window.Razorpay({
+        key: razorpayPublicKeyId,
+        amount: orderPayload.amount,
+        currency: orderPayload.currency,
+        name: "Meridian",
+        description,
+        order_id: orderPayload.order_id,
+        theme: { color: "#4F46E5" },
+        modal: {
+          ondismiss: () => {
+            setCheckoutLoadingId(null)
+            setCheckoutMessage("Razorpay checkout was closed before payment completed.")
+          },
+        },
+        handler: async (response: RazorpayCheckoutResponse) => {
+          setCheckoutMessage("Verifying Razorpay payment...")
+          const verifyResponse = await fetch("/api/verify-payment", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(response),
+          })
+          const verifyPayload = await verifyResponse.json().catch(() => null)
+          setCheckoutLoadingId(null)
+          setCheckoutMessage(
+            verifyResponse.ok && verifyPayload?.verified
+              ? "Payment verified. Plan and credit fulfilment will be wired in the billing ledger milestone."
+              : verifyPayload?.error ?? "Payment verification failed."
+          )
+        },
+      })
+
+      checkout.on("payment.failed", (response) => {
+        setCheckoutLoadingId(null)
+        setCheckoutMessage(response.error?.description ?? response.error?.reason ?? "Razorpay payment failed.")
+      })
+      checkout.open()
+    } catch (checkoutError) {
+      setCheckoutLoadingId(null)
+      setCheckoutMessage(checkoutError instanceof Error ? checkoutError.message : "Razorpay checkout failed to start.")
+    }
+  }
 
   return (
     <SectionShell>
@@ -6701,6 +6835,19 @@ function BillingSection({
                   <div>{formatBillingNumber(plan.metricSampleLimit)} metric samples/mo</div>
                   <div>{plan.retentionDays} day default retention</div>
                 </div>
+                <Button
+                  size="sm"
+                  variant={plan.monthlyInr === 0 ? "outline" : "default"}
+                  onClick={() => startRazorpayCheckout({
+                    amountPaise: plan.monthlyInr * 100,
+                    checkoutId: `plan-${plan.id}`,
+                    description: `${plan.name} monthly plan`,
+                    receipt: `${plan.id}`.slice(0, 40),
+                  })}
+                  disabled={plan.monthlyInr === 0 || checkoutLoadingId === `plan-${plan.id}`}
+                >
+                  {plan.monthlyInr === 0 ? "Free plan" : checkoutLoadingId === `plan-${plan.id}` ? "Opening..." : "Pay monthly"}
+                </Button>
               </div>
             ))}
           </CardContent>
@@ -6716,8 +6863,23 @@ function BillingSection({
               <div key={pack.credits} className="rounded-lg border bg-muted/20 p-4">
                 <div className="text-2xl font-semibold">{formatBillingNumber(pack.credits)} credits</div>
                 <div className="mt-1 text-sm text-muted-foreground">{formatBillingPrice(pack.usd, pack.inr)}</div>
+                <Button
+                  className="mt-3"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => startRazorpayCheckout({
+                    amountPaise: pack.inr * 100,
+                    checkoutId: `credits-${pack.credits}`,
+                    description: `${formatBillingNumber(pack.credits)} Meridian credits`,
+                    receipt: `credits-${pack.credits}`.slice(0, 40),
+                  })}
+                  disabled={checkoutLoadingId === `credits-${pack.credits}`}
+                >
+                  {checkoutLoadingId === `credits-${pack.credits}` ? "Opening..." : "Buy credits"}
+                </Button>
               </div>
             ))}
+            {checkoutMessage ? <div className="sm:col-span-3 text-xs text-muted-foreground">{checkoutMessage}</div> : null}
           </CardContent>
         </Card>
 
