@@ -19,6 +19,7 @@
 - Made Billing checkout actions explicit with a visible Razorpay helper panel, `Upgrade to ...` plan buttons, and `Buy ... credits` credit-pack buttons.
 - Made Billing checkout resilient when `NEXT_PUBLIC_RAZORPAY_KEY_ID` is missing by returning the public checkout key id from the authenticated order API.
 - Added a dedicated `Test INR 1 payment` button in Billing for low-risk Razorpay checkout validation.
+- Added safe Razorpay checkout prefill data and card-method preference for the INR 1 test checkout.
 
 ## 0.1.0
 

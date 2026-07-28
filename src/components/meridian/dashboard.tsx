@@ -3679,6 +3679,7 @@ export function MeridianDashboard({
         ) : activeSection === "billing" ? (
           <BillingSection
             project={initialWorkspace.project}
+            currentUser={currentUser}
             nodes={endpointNodes}
             projectUsage={projectUsage}
             projectUsageMessage={projectUsageMessage}
@@ -6701,6 +6702,7 @@ function loadRazorpayCheckoutScript() {
 
 function BillingSection({
   project,
+  currentUser,
   nodes,
   projectUsage,
   projectUsageMessage,
@@ -6712,6 +6714,7 @@ function BillingSection({
   onSaveOperationsPolicy,
 }: {
   project: WorkspacePayload["project"]
+  currentUser: NonNullable<Session["user"]>
   nodes: EndpointNodeData[]
   projectUsage: ProjectUsageSnapshot | null
   projectUsageMessage: string
@@ -6729,16 +6732,21 @@ function BillingSection({
   const [checkoutMessage, setCheckoutMessage] = useState("")
   const [checkoutLoadingId, setCheckoutLoadingId] = useState<string | null>(null)
   const razorpayPublicKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ?? ""
+  const checkoutPrefillName = currentUser.name ?? "Meridian Test User"
+  const checkoutPrefillEmail = currentUser.email ?? "test@meridian.local"
+  const checkoutPrefillContact = "9999999999"
 
   const startRazorpayCheckout = async ({
     amountPaise,
     description,
     checkoutId,
+    method,
     receipt,
   }: {
     amountPaise: number
     description: string
     checkoutId: string
+    method?: "card" | "netbanking" | "upi" | "wallet"
     receipt: string
   }) => {
     const stopCheckoutWithMessage = (message: string) => {
@@ -6781,6 +6789,17 @@ function BillingSection({
         name: "Meridian",
         description,
         order_id: orderPayload.order_id,
+        prefill: {
+          name: checkoutPrefillName,
+          email: checkoutPrefillEmail,
+          contact: checkoutPrefillContact,
+        },
+        readonly: {
+          name: false,
+          email: false,
+          contact: false,
+        },
+        method,
         theme: { color: "#4F46E5" },
         modal: {
           ondismiss: () => {
@@ -6841,6 +6860,7 @@ function BillingSection({
                     amountPaise: 100,
                     checkoutId: "razorpay-test-payment",
                     description: "Meridian INR 1 checkout test",
+                    method: "card",
                     receipt: "razorpay-test-1-inr",
                   })}
                   disabled={checkoutLoadingId === "razorpay-test-payment"}
