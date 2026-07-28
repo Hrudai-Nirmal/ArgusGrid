@@ -86,6 +86,7 @@ import { DEFAULT_ALERT_SUPPRESSION_MINUTES, buildAlertSuppressionSummary } from 
 import { ALERT_RULE_TEMPLATES, buildAlertRulePayloadFromTemplate } from "@/lib/alert-rule-templates.mjs"
 import { validateApiAuthConfig } from "@/lib/api-auth-headers.mjs"
 import { getApiSetupFieldHelp, getAuthHeaderPlaceholder } from "@/lib/api-setup-help.mjs"
+import { MERIDIAN_CREDIT_PACKS, MERIDIAN_PRICING_PLANS, getOperationsPolicyCopy } from "@/lib/billing-plans.mjs"
 import { buildGlobalSearchIndex, searchGlobalIndex, type GlobalSearchResult } from "@/lib/global-search.mjs"
 import {
   allEndpointNodes,
@@ -393,7 +394,7 @@ type ProjectAlert = WorkspacePayload["alerts"][number]
 type ProjectAlertRule = WorkspacePayload["alertRules"][number]
 type AlertTimelineFilter = "24h" | "7d" | "30d" | "all"
 type LiveConnectionState = "connecting" | "live" | "reconnecting" | "manual"
-type DashboardSection = "control-room" | "projects" | "map" | "runs" | "alerts" | "reports" | "integrations" | "testing" | "logs" | "team" | "settings" | "account"
+type DashboardSection = "control-room" | "projects" | "map" | "runs" | "alerts" | "reports" | "billing" | "integrations" | "testing" | "logs" | "team" | "settings" | "account"
 type ProjectLogType = "activity" | "alerts" | "polling" | "deliveries" | "runs" | "reports" | "webhooks" | "team" | "map"
 type ProjectLogWindow = "24h" | "7d" | "30d" | "all"
 type NotificationJobStatus = "QUEUED" | "RUNNING" | "RETRYING" | "SENT" | "FAILED" | "SKIPPED" | "CANCELLED"
@@ -434,6 +435,7 @@ type ProjectUsageSnapshot = {
     summary: string
   }[]
 }
+type ProjectOperationsPolicyRecord = WorkspacePayload["project"]["operationsPolicy"]
 type OperationalStatus = "ready" | "warning" | "blocked"
 type ProductionObservabilitySnapshot = {
   status: OperationalStatus
@@ -615,6 +617,13 @@ const dashboardSections: {
     icon: NotebookText,
   },
   {
+    id: "billing",
+    label: "Billing",
+    title: "Billing",
+    description: "Plans, credits, usage graphs, and project operations policy.",
+    icon: Gauge,
+  },
+  {
     id: "integrations",
     label: "Integrations",
     title: "Integrations",
@@ -685,6 +694,12 @@ const sectionSubsections: Record<DashboardSection, { id: string; label: string; 
     { id: "reports-preview", label: "Preview" },
     { id: "reports-links", label: "Links" },
     { id: "reports-exports", label: "Exports" },
+  ],
+  billing: [
+    { id: "billing-plans", label: "Plans" },
+    { id: "billing-credits", label: "Credits" },
+    { id: "billing-usage", label: "Usage graphs" },
+    { id: "billing-operations-policy", label: "Operations policy" },
   ],
   integrations: [
     { id: "integrations-templates", label: "Templates" },
@@ -1026,6 +1041,8 @@ export function MeridianDashboard({
   const [notificationJobCounts, setNotificationJobCounts] = useState<Record<string, number>>({})
   const [notificationJobMessage, setNotificationJobMessage] = useState("")
   const [idleActionMessage, setIdleActionMessage] = useState("")
+  const [operationsPolicy, setOperationsPolicy] = useState<ProjectOperationsPolicyRecord>(initialWorkspace.project.operationsPolicy)
+  const [operationsPolicyMessage, setOperationsPolicyMessage] = useState("")
   const [projectUsage, setProjectUsage] = useState<ProjectUsageSnapshot | null>(null)
   const [projectUsageMessage, setProjectUsageMessage] = useState("")
   const [productionObservability, setProductionObservability] = useState<ProductionObservabilitySnapshot | null>(null)
@@ -1264,6 +1281,7 @@ export function MeridianDashboard({
       setAlertRules(payload.alertRules)
       setLatestPoll(payload.diagnostics.latestPoll)
       setLatestEmail(payload.diagnostics.latestEmail)
+      setOperationsPolicy(payload.project.operationsPolicy)
       if (!options.silent) setActionMessage("Project telemetry refreshed.")
     } catch {
       if (!options.silent) setActionMessage("Could not refresh project telemetry.")
@@ -1767,7 +1785,7 @@ export function MeridianDashboard({
     setNotificationJobMessage(`${payload.jobs?.length ?? 0} recent notification jobs loaded.`)
   }
 
-  const loadProjectUsage = async () => {
+  const loadProjectUsage = useCallback(async () => {
     setProjectUsageMessage("Loading project usage...")
     const response = await fetch(`/api/projects/${initialWorkspace.project.id}/usage?window=30d`)
     const payload = await response.json().catch(() => null)
@@ -1777,7 +1795,7 @@ export function MeridianDashboard({
     }
     setProjectUsage(payload.usage ?? null)
     setProjectUsageMessage("Project usage loaded for the last 30 days.")
-  }
+  }, [initialWorkspace.project.id])
 
   const loadProductionObservability = async () => {
     setProductionObservabilityMessage("Loading production observability...")
@@ -1789,6 +1807,23 @@ export function MeridianDashboard({
     }
     setProductionObservability(payload.overview ?? null)
     setProductionObservabilityMessage("Production observability loaded from the latest safe signals.")
+  }
+
+  const saveOperationsPolicy = async () => {
+    setOperationsPolicyMessage("Saving operations policy...")
+    const response = await fetch(`/api/projects/${initialWorkspace.project.id}/operations-policy`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(operationsPolicy),
+    })
+    const payload = await response.json().catch(() => null)
+    if (!response.ok) {
+      setOperationsPolicyMessage(payload?.error ?? "Operations policy failed to save.")
+      return
+    }
+    setOperationsPolicy(payload.operationsPolicy)
+    setOperationsPolicyMessage("Operations policy saved.")
+    if (activeSection === "logs") void loadProjectLogs()
   }
 
   const retryNotificationJob = async (jobId: string) => {
@@ -1835,6 +1870,16 @@ export function MeridianDashboard({
     await loadProjectUsage()
     if (activeSection === "logs") void loadProjectLogs()
   }
+
+  useEffect(() => {
+    if (activeSection === "billing" && !projectUsage && !projectUsageMessage) {
+      const usageTimer = window.setTimeout(() => {
+        void loadProjectUsage()
+      }, 0)
+      return () => window.clearTimeout(usageTimer)
+    }
+    return undefined
+  }, [activeSection, loadProjectUsage, projectUsage, projectUsageMessage])
 
   const sendTestEmail = async () => {
     if (!canManageOrganization) {
@@ -3630,6 +3675,19 @@ export function MeridianDashboard({
             onCreateReportShare={createReportShare}
             onCopyReportShareUrl={copyReportShareUrl}
             onRevokeReportShare={revokeReportShare}
+          />
+        ) : activeSection === "billing" ? (
+          <BillingSection
+            project={initialWorkspace.project}
+            nodes={endpointNodes}
+            projectUsage={projectUsage}
+            projectUsageMessage={projectUsageMessage}
+            operationsPolicy={operationsPolicy}
+            operationsPolicyMessage={operationsPolicyMessage}
+            canManageOrganization={canManageOrganization}
+            onLoadProjectUsage={loadProjectUsage}
+            onOperationsPolicyChange={setOperationsPolicy}
+            onSaveOperationsPolicy={saveOperationsPolicy}
           />
         ) : activeSection === "integrations" ? (
           <IntegrationsSection
@@ -6561,6 +6619,220 @@ function LogsSection({
             </Card>
           )}
         </div>
+      </div>
+    </SectionShell>
+  )
+}
+
+function formatBillingNumber(value: number) {
+  return new Intl.NumberFormat("en").format(value)
+}
+
+function formatBillingPrice(usd: number, inr: number) {
+  return usd === 0 ? "$0 / ₹0" : `$${formatBillingNumber(usd)} / ₹${formatBillingNumber(inr)}`
+}
+
+function UsageGraphRow({ label, value, limit, detail }: { label: string; value: number; limit: number | null; detail: string }) {
+  const percent = limit ? Math.min(100, Math.round((value / limit) * 100)) : 0
+
+  return (
+    <div className="grid gap-2 rounded-lg border bg-background p-3">
+      <div className="flex items-center justify-between gap-3 text-sm">
+        <div className="font-medium">{label}</div>
+        <div className="text-xs text-muted-foreground">
+          {formatBillingNumber(value)}{limit ? ` / ${formatBillingNumber(limit)}` : ""}
+        </div>
+      </div>
+      <Progress value={percent} />
+      <div className="text-xs text-muted-foreground">{detail}</div>
+    </div>
+  )
+}
+
+function BillingSection({
+  project,
+  nodes,
+  projectUsage,
+  projectUsageMessage,
+  operationsPolicy,
+  operationsPolicyMessage,
+  canManageOrganization,
+  onLoadProjectUsage,
+  onOperationsPolicyChange,
+  onSaveOperationsPolicy,
+}: {
+  project: WorkspacePayload["project"]
+  nodes: EndpointNodeData[]
+  projectUsage: ProjectUsageSnapshot | null
+  projectUsageMessage: string
+  operationsPolicy: ProjectOperationsPolicyRecord
+  operationsPolicyMessage: string
+  canManageOrganization: boolean
+  onLoadProjectUsage: () => Promise<void>
+  onOperationsPolicyChange: (policy: ProjectOperationsPolicyRecord) => void
+  onSaveOperationsPolicy: () => Promise<void>
+}) {
+  const referencePlan = MERIDIAN_PRICING_PLANS.find((plan) => plan.id === "agency_beta") ?? MERIDIAN_PRICING_PLANS[0]
+  const counts = projectUsage?.counts
+  const policyCopy = getOperationsPolicyCopy(operationsPolicy)
+
+  return (
+    <SectionShell>
+      <div className="mx-auto grid max-w-7xl gap-5">
+        <Card id="billing-plans">
+          <CardHeader>
+            <CardTitle>Plans</CardTitle>
+            <CardDescription>Beta pricing in USD and INR. Payment collection is not enabled in-app yet.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 lg:grid-cols-4">
+            {MERIDIAN_PRICING_PLANS.map((plan) => (
+              <div key={plan.id} className="grid content-start gap-3 rounded-lg border bg-background p-4">
+                <div>
+                  <div className="font-semibold">{plan.name}</div>
+                  <div className="mt-1 text-2xl font-semibold">{formatBillingPrice(plan.monthlyUsd, plan.monthlyInr)}</div>
+                </div>
+                <div className="text-xs text-muted-foreground">{plan.summary}</div>
+                <div className="grid gap-1 text-xs text-muted-foreground">
+                  <div>{formatBillingNumber(plan.includedCredits)} included credits</div>
+                  <div>{plan.projectLimit ? `${plan.projectLimit} project${plan.projectLimit === 1 ? "" : "s"}` : "Custom projects"}</div>
+                  <div>{plan.nodeLimit ? `${plan.nodeLimit} nodes` : "Custom nodes"}</div>
+                  <div>{formatBillingNumber(plan.workflowRunLimit)} workflow runs/mo</div>
+                  <div>{formatBillingNumber(plan.metricSampleLimit)} metric samples/mo</div>
+                  <div>{plan.retentionDays} day default retention</div>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card id="billing-credits">
+          <CardHeader>
+            <CardTitle>Credit pool</CardTitle>
+            <CardDescription>Credits are the prepaid safety buffer after included plan usage is exhausted.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-3">
+            {MERIDIAN_CREDIT_PACKS.map((pack) => (
+              <div key={pack.credits} className="rounded-lg border bg-muted/20 p-4">
+                <div className="text-2xl font-semibold">{formatBillingNumber(pack.credits)} credits</div>
+                <div className="mt-1 text-sm text-muted-foreground">{formatBillingPrice(pack.usd, pack.inr)}</div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card id="billing-usage">
+          <CardHeader className="flex flex-row items-start justify-between gap-3">
+            <div>
+              <CardTitle>Usage by category</CardTitle>
+              <CardDescription>Graph views of current project usage against the Agency Beta modeling limits.</CardDescription>
+            </div>
+            <Button size="sm" variant="outline" onClick={onLoadProjectUsage}>Refresh usage</Button>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            {projectUsageMessage ? <div className="text-xs text-muted-foreground">{projectUsageMessage}</div> : null}
+            <div className="grid gap-3 lg:grid-cols-2">
+              <UsageGraphRow label="Nodes" value={nodes.length} limit={referencePlan.nodeLimit} detail={`${project.name} automation map size.`} />
+              <UsageGraphRow label="Workflow runs" value={counts?.workflowRuns ?? 0} limit={referencePlan.workflowRunLimit} detail="Submitted SDK/API/Dify/n8n workflow telemetry." />
+              <UsageGraphRow label="Metric samples" value={counts?.metricSamples ?? 0} limit={referencePlan.metricSampleLimit} detail="Persisted REST metric samples from manual or scheduled polling." />
+              <UsageGraphRow label="Notification jobs" value={counts?.notificationJobs ?? 0} limit={referencePlan.notificationJobLimit} detail="Email, Slack, and webhook notification jobs." />
+              <UsageGraphRow label="Report links" value={counts?.reportShares ?? 0} limit={referencePlan.reportShareLimit} detail="Active and historical client proof report shares in the usage window." />
+              <UsageGraphRow label="Active telemetry tokens" value={counts?.activeIngestionTokens ?? 0} limit={20} detail="Live ingestion tokens; raw token values are never shown here." />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card id="billing-operations-policy">
+          <CardHeader>
+            <CardTitle>Operations Policy</CardTitle>
+            <CardDescription>Customer-facing customization for freshness, reliability, retention, and spend behavior. Meridian owns the infrastructure mapping.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+            <div className="grid gap-3">
+              <label className="grid gap-1 text-sm">
+                Operations mode
+                <select
+                  className="h-10 rounded-lg border bg-background px-2 text-sm disabled:opacity-50"
+                  value={operationsPolicy.operationsMode}
+                  onChange={(event) => onOperationsPolicyChange({ ...operationsPolicy, operationsMode: event.target.value as ProjectOperationsPolicyRecord["operationsMode"] })}
+                  disabled={!canManageOrganization}
+                >
+                  <option value="cost_saver">Cost Saver</option>
+                  <option value="balanced">Balanced</option>
+                  <option value="priority">Priority</option>
+                </select>
+              </label>
+              <label className="grid gap-1 text-sm">
+                Polling frequency
+                <select
+                  className="h-10 rounded-lg border bg-background px-2 text-sm disabled:opacity-50"
+                  value={operationsPolicy.pollingCadenceMin ?? "manual"}
+                  onChange={(event) => onOperationsPolicyChange({ ...operationsPolicy, pollingCadenceMin: event.target.value === "manual" ? null : Number(event.target.value) })}
+                  disabled={!canManageOrganization}
+                >
+                  <option value="manual">Off / manual only</option>
+                  <option value="60">Every 60 min</option>
+                  <option value="15">Every 15 min</option>
+                  <option value="5">Every 5 min</option>
+                  <option value="1">Every 1 min, Enterprise approval</option>
+                </select>
+              </label>
+              <label className="grid gap-1 text-sm">
+                Notification reliability
+                <select
+                  className="h-10 rounded-lg border bg-background px-2 text-sm disabled:opacity-50"
+                  value={operationsPolicy.notificationReliability}
+                  onChange={(event) => onOperationsPolicyChange({ ...operationsPolicy, notificationReliability: event.target.value as ProjectOperationsPolicyRecord["notificationReliability"] })}
+                  disabled={!canManageOrganization}
+                >
+                  <option value="standard">Standard</option>
+                  <option value="priority">Priority</option>
+                </select>
+              </label>
+              <label className="grid gap-1 text-sm">
+                Retention
+                <select
+                  className="h-10 rounded-lg border bg-background px-2 text-sm disabled:opacity-50"
+                  value={operationsPolicy.retentionDays}
+                  onChange={(event) => onOperationsPolicyChange({ ...operationsPolicy, retentionDays: Number(event.target.value) as ProjectOperationsPolicyRecord["retentionDays"] })}
+                  disabled={!canManageOrganization}
+                >
+                  <option value={7}>7 days</option>
+                  <option value={30}>30 days</option>
+                  <option value={90}>90 days</option>
+                  <option value={180}>180 days, Enterprise approval</option>
+                </select>
+              </label>
+              <label className="grid gap-1 text-sm">
+                Spend protection
+                <select
+                  className="h-10 rounded-lg border bg-background px-2 text-sm disabled:opacity-50"
+                  value={operationsPolicy.spendProtection}
+                  onChange={(event) => onOperationsPolicyChange({ ...operationsPolicy, spendProtection: event.target.value as ProjectOperationsPolicyRecord["spendProtection"] })}
+                  disabled={!canManageOrganization}
+                >
+                  <option value="use_credits">Use credits after included usage</option>
+                  <option value="stop_at_plan">Stop expensive writes at plan limits</option>
+                </select>
+              </label>
+              <Button onClick={onSaveOperationsPolicy} disabled={!canManageOrganization}>Save operations policy</Button>
+              {operationsPolicyMessage ? <div className="text-xs text-muted-foreground">{operationsPolicyMessage}</div> : null}
+            </div>
+            <div className="grid content-start gap-3 rounded-lg border bg-muted/20 p-4 text-sm">
+              <div className="font-medium">Current policy summary</div>
+              <div className="grid gap-2 text-xs text-muted-foreground">
+                <div>Mode: <span className="font-medium text-foreground capitalize">{policyCopy.mode}</span></div>
+                <div>Polling: <span className="font-medium text-foreground">{policyCopy.cadence}</span></div>
+                <div>Notification recovery: <span className="font-medium text-foreground">{policyCopy.reliability}</span></div>
+                <div>Retention: <span className="font-medium text-foreground">{policyCopy.retention}</span></div>
+                <div>Spend: <span className="font-medium text-foreground">{policyCopy.spend}</span></div>
+              </div>
+              <Separator />
+              <div className="text-xs text-muted-foreground">
+                Users customize outcomes here. Meridian still controls Neon, Inngest, Vercel, and scheduler infrastructure centrally so one project cannot create unbounded idle cost.
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </SectionShell>
   )

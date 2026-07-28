@@ -13,6 +13,7 @@ import {
   type NodeStatus,
 } from "@/lib/meridian-data"
 import { normalizeAlertRuleMetadata, type AlertRuleMode, type AlertRuleSource, type AnomalyDirection, type RunAlertMetric } from "@/lib/alert-rule-metadata"
+import { normalizeProjectOperationsPolicy } from "@/lib/billing-plans.mjs"
 import { getReadinessStatus, type ReadinessStatus } from "@/lib/health"
 import { createAuditLog } from "@/lib/audit-log"
 import { getPrisma } from "@/lib/prisma"
@@ -70,8 +71,23 @@ type DbRollup = {
   startedAt: Date
 }
 
+type ProjectOperationsPolicyPayload = {
+  operationsMode: "cost_saver" | "balanced" | "priority"
+  pollingCadenceMin: number | null
+  notificationReliability: "standard" | "priority"
+  retentionDays: 7 | 30 | 90 | 180
+  spendProtection: "stop_at_plan" | "use_credits"
+}
+
 type DbProject = Project & {
   categories: ProjectCategory[]
+  operationsPolicy: {
+    operationsMode: string
+    pollingCadenceMin: number | null
+    notificationReliability: string
+    retentionDays: number
+    spendProtection: string
+  } | null
   nodes: DbNode[]
   edges: GraphEdge[]
   alertRules: {
@@ -130,6 +146,7 @@ export type WorkspacePayload = {
     id: string
     name: string
     slug: string
+    operationsPolicy: ProjectOperationsPolicyPayload
   }
   members: {
     id: string
@@ -569,6 +586,7 @@ function projectToWorkspace(
       id: project.id,
       name: project.name,
       slug: project.slug,
+      operationsPolicy: normalizeProjectOperationsPolicy(project.operationsPolicy ?? undefined),
     },
     members,
     invitations,
@@ -905,6 +923,7 @@ export async function getWorkspaceForUser(userId: string, projectId?: string) {
       archivedAt: null,
     },
     include: {
+      operationsPolicy: true,
       categories: true,
       nodes: {
         include: {

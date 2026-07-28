@@ -42,6 +42,17 @@ Use this checklist for production validation on `https://meridian.hrudainirmal.i
 - Confirm selecting results navigates to the right section, selects the node/alert where applicable, and can open Logs filtered to failed jobs.
 - Confirm result rows never show raw ingestion tokens, webhook URLs, Slack URLs, signing secrets, encrypted payloads, env values, or private credential bodies.
 
+## Billing And Account Management
+
+- Open `Billing` from the main sidebar and confirm it is separate from `Account`, `Settings`, and `Testing`.
+- Confirm Plans show Free Sandbox, Solo Beta, Agency Beta, and Enterprise Pilot with USD and INR monthly rates.
+- Confirm Credit pool shows 500, 2,000, and 10,000 credit packs with USD and INR rates.
+- Confirm Usage graphs load bounded 30-day counts for nodes, workflow runs, metric samples, notification jobs, report links, and active telemetry tokens.
+- Refresh usage and confirm counts remain secret-safe: no raw tokens, webhook URLs, Slack URLs, signing secrets, encrypted payloads, env values, or credential bodies.
+- As an owner/admin, change Operations Policy values for mode, polling frequency, notification reliability, retention, and spend protection; save and confirm the success message.
+- As a viewer/member where possible, confirm Operations Policy save controls are unavailable or rejected.
+- Open `Account` and confirm signed-in identity, organization, current project, Team/Settings shortcuts, and the only visible `Sign out` action.
+
 ## Interactive Tutorial
 
 - Clear `meridian-tutorial:first-workflow:v1` from localStorage and open a no-telemetry disposable project; confirm the tutorial auto-starts.

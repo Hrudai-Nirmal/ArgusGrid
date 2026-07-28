@@ -167,6 +167,14 @@ Alert email, generic webhook, and Slack delivery run through a Postgres-backed o
 
 Workflow ingestion is protected by durable Postgres minute buckets: each ingestion token allows 60 accepted attempts per minute and each project allows 300 attempts per minute. Over-limit requests return `429` with a `Retry-After` header and a secret-safe message. Testing -> Project usage shows 30-day counts for workflow runs, metric samples, alerts, notification jobs/deliveries, report shares, active ingestion tokens, current rate limits, and retention policy summaries.
 
+## Billing And Account Management
+
+Billing is a dedicated sidebar section for beta pricing, prepaid credits, project usage graphs, and the project operations policy. The first beta scheme is intentionally conservative: Free Sandbox is $0 / INR 0, Solo Beta is $59 / INR 4,999, Agency Beta is $179 / INR 14,999, and Enterprise Pilot is $799 / INR 64,999. Prepaid credit packs are 500 credits for $19 / INR 1,599, 2,000 credits for $69 / INR 5,999, and 10,000 credits for $249 / INR 20,999. These are planning/modeling rates only; in-app payment collection is not enabled yet.
+
+Billing -> Usage graphs loads bounded 30-day counts for nodes, workflow runs, metric samples, notification jobs, report links, and active telemetry tokens. Billing -> Operations Policy lets owners/admins choose the customer-facing posture for operations mode, polling frequency, notification recovery, retention, and spend protection. Users customize outcomes there, while Meridian still controls Neon, Inngest, Vercel, and external scheduler infrastructure centrally so one project cannot create unbounded idle cost.
+
+Account is also a dedicated sidebar section. It owns signed-in identity, organization/project context, Team and Settings shortcuts, and the only visible Sign out action.
+
 ## Production Observability
 
 Owners/admins can open `Testing` -> `Production observability` and refresh a secret-safe operations overview for the current project. The overview classifies existing signals as `Ready`, `Warning`, or `Blocked` across core dependencies, runtime safety, poll freshness, durable notification jobs, and ingestion usage guardrails. It is backed by `GET /api/projects/[projectId]/operations/overview`, which returns safe cards, evidence labels, and runbook paths only; it must never expose database URLs, OAuth secrets, encryption keys, cron secrets, email keys, Slack/webhook URLs, signing secrets, raw ingestion tokens, or encrypted payloads.
