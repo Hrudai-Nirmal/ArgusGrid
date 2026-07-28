@@ -6741,9 +6741,9 @@ function BillingSection({
     checkoutId: string
     receipt: string
   }) => {
-    if (!razorpayPublicKeyId) {
-      setCheckoutMessage("Razorpay public key is not configured.")
-      return
+    const stopCheckoutWithMessage = (message: string) => {
+      setCheckoutLoadingId(null)
+      setCheckoutMessage(message)
     }
 
     setCheckoutLoadingId(checkoutId)
@@ -6761,16 +6761,21 @@ function BillingSection({
       })
       const orderPayload = await orderResponse.json().catch(() => null)
       if (!orderResponse.ok || !orderPayload?.order_id) {
-        setCheckoutMessage(orderPayload?.error ?? "Razorpay order creation failed.")
+        stopCheckoutWithMessage(orderPayload?.error ?? "Razorpay order creation failed.")
         return
       }
       if (!window.Razorpay) {
-        setCheckoutMessage("Razorpay checkout script loaded, but the payment modal is unavailable.")
+        stopCheckoutWithMessage("Razorpay checkout script loaded, but the payment modal is unavailable.")
+        return
+      }
+      const checkoutKeyId = typeof orderPayload.key_id === "string" && orderPayload.key_id ? orderPayload.key_id : razorpayPublicKeyId
+      if (!checkoutKeyId) {
+        stopCheckoutWithMessage("Razorpay public key is unavailable from the order response.")
         return
       }
 
       const checkout = new window.Razorpay({
-        key: razorpayPublicKeyId,
+        key: checkoutKeyId,
         amount: orderPayload.amount,
         currency: orderPayload.currency,
         name: "Meridian",

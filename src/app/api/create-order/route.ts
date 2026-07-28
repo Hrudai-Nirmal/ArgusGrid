@@ -40,6 +40,7 @@ export async function POST(request: Request) {
       order_id: order.id,
       amount: order.amount,
       currency: order.currency,
+      key_id: keyId,
     })
   } catch (orderError) {
     const statusCode = typeof orderError === "object" && orderError && "statusCode" in orderError ? Number(orderError.statusCode) : 500
