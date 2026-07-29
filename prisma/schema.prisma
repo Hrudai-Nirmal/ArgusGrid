@@ -70,6 +70,7 @@ model User {
   image           String?
   accounts        Account[]
   sessions        Session[]
+  passwordCredential UserPasswordCredential?
   memberships     Membership[]
   invitations     TeamInvitation[]
   notifications   NotificationPreference[]
@@ -79,8 +80,20 @@ model User {
   paddleCustomers      PaddleCustomer[]
   paddleSubscriptions  PaddleSubscription[]
   paddleTransactions   PaddleTransaction[]
+  creditLedgerEntries  BillingCreditLedgerEntry[]
   createdAt       DateTime                 @default(now())
   updatedAt       DateTime                 @updatedAt
+}
+
+model UserPasswordCredential {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  passwordHash String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model Account {
@@ -132,6 +145,7 @@ model Organization {
   paddleCustomers     PaddleCustomer[]
   paddleSubscriptions PaddleSubscription[]
   paddleTransactions  PaddleTransaction[]
+  creditLedgerEntries BillingCreditLedgerEntry[]
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
 }
@@ -187,6 +201,7 @@ model Project {
   operationsPolicy    ProjectOperationsPolicy?
   paddleSubscriptions PaddleSubscription[]
   paddleTransactions  PaddleTransaction[]
+  creditLedgerEntries BillingCreditLedgerEntry[]
   archivedAt          DateTime?
   createdAt           DateTime                    @default(now())
   updatedAt           DateTime                    @updatedAt
@@ -297,6 +312,7 @@ model PaddleTransaction {
   user                  User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
   organization          Organization?       @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   project               Project?            @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  creditLedgerEntries   BillingCreditLedgerEntry[]
   createdAt             DateTime            @default(now())
   updatedAt             DateTime            @updatedAt
 
@@ -308,6 +324,31 @@ model PaddleTransaction {
   @@index([priceId])
   @@index([billingKey])
   @@index([environment])
+}
+
+model BillingCreditLedgerEntry {
+  id                    String             @id @default(cuid())
+  source                String
+  amount                Int
+  resource              String?
+  description           String
+  idempotencyKey        String             @unique
+  metadata              Json?
+  paddleTransactionId   String?
+  userId                String?
+  organizationId        String
+  projectId             String?
+  paddleTransaction     PaddleTransaction? @relation(fields: [paddleTransactionId], references: [paddleTransactionId], onDelete: SetNull)
+  user                  User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  organization          Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project               Project?           @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  createdAt             DateTime           @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([projectId, createdAt])
+  @@index([paddleTransactionId])
+  @@index([resource, createdAt])
+  @@index([source, createdAt])
 }
 
 model PaddleWebhookEvent {

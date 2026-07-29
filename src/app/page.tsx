@@ -3,7 +3,7 @@ import { OnboardingScreen } from "@/components/auth/onboarding-screen";
 import { SignInScreen } from "@/components/auth/sign-in-screen";
 import { ServiceUnavailable } from "@/components/auth/service-unavailable";
 import { SetupRequired } from "@/components/auth/setup-required";
-import { authOptions, hasGithubAuthConfig } from "@/lib/auth";
+import { authOptions, hasAnyAuthConfig, hasGithubAuthConfig } from "@/lib/auth";
 import { hasDatabaseConfig } from "@/lib/prisma";
 import { logServerError } from "@/lib/server-logging";
 import { ensureWorkspaceForUser, getOnboardingState, getWorkspaceForUser } from "@/lib/workspace";
@@ -17,10 +17,10 @@ export default async function Home({
   searchParams?: Promise<{ project?: string }>;
 }) {
   const databaseReady = hasDatabaseConfig();
-  const githubReady = hasGithubAuthConfig();
+  const authReady = hasAnyAuthConfig();
 
-  if (!databaseReady || !githubReady || !process.env.NEXTAUTH_SECRET) {
-    return <SetupRequired databaseReady={databaseReady} githubReady={githubReady} />;
+  if (!databaseReady || !authReady || !process.env.NEXTAUTH_SECRET) {
+    return <SetupRequired databaseReady={databaseReady} githubReady={hasGithubAuthConfig()} authReady={authReady} />;
   }
 
   let session;
@@ -55,7 +55,7 @@ export default async function Home({
       return <OnboardingScreen organizationName={onboarding.organization.name} />;
     }
 
-    return <SetupRequired databaseReady={databaseReady} githubReady={githubReady} />;
+    return <SetupRequired databaseReady={databaseReady} githubReady={hasGithubAuthConfig()} authReady={authReady} />;
   }
 
   return <MeridianDashboard initialWorkspace={workspace} currentUser={session.user} />;

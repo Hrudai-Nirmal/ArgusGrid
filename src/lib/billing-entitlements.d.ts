@@ -8,7 +8,11 @@ export type BillingEntitlementUsage = {
 }
 
 export type BillingPlanEvidence = {
-  subscription?: { status?: string | null; billingKey?: string | null } | null
+  subscription?: {
+    status?: string | null
+    billingKey?: string | null
+    currentBillingPeriodEndsAt?: string | Date | null
+  } | null
   transactions?: {
     status?: string | null
     billingKey?: string | null
@@ -30,7 +34,7 @@ export function getPlanByBillingKey(billingKey: unknown): {
 }
 export function getBillingPlanFromEvidence(input: BillingPlanEvidence): {
   plan: ReturnType<typeof getPlanByBillingKey>
-  source: "subscription" | "provisional_transaction" | "free"
+  source: "subscription" | "subscription_grace" | "provisional_transaction" | "free"
   isProvisional: boolean
   provisionalEndsAt: string | null
 }
@@ -38,6 +42,7 @@ export function buildUsageEntitlement(input: {
   planId: string
   usage: BillingEntitlementUsage
   purchasedCredits?: number
+  consumedCredits?: number
   spendProtection?: "use_credits" | "stop_at_plan" | string
 }): {
   plan: ReturnType<typeof getPlanByBillingKey>
@@ -57,5 +62,6 @@ export function canConsumeEntitlementResource(
   reason: string
   limit: number
   used: number
+  creditsNeeded: number
   creditsRemainingAfter: number
 }

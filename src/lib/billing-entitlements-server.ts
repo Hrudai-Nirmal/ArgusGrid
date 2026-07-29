@@ -18,6 +18,8 @@ type BillingPrisma = PrismaClient | Prisma.TransactionClient
 type BillingResourceKind = "workflow_run" | "metric_sample" | "notification_job" | "report_share"
 
 const PAID_TRANSACTION_STATUSES = ["completed", "paid"]
+const CREDIT_PURCHASE_SOURCE = "credit_purchase"
+const CREDIT_USAGE_SOURCE = "usage_charge"
 
 function currentMonthStart(now = new Date()) {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0))
@@ -65,6 +67,52 @@ async function createEntitlementAuditLog(prisma: BillingPrisma, input: {
   })
 }
 
+async function getCreditLedgerTotals(prisma: BillingPrisma, input: { projectId: string; organizationId: string }) {
+  const [ledgerEntries, creditTransactions] = await Promise.all([
+    prisma.billingCreditLedgerEntry.findMany({
+      where: {
+        OR: [
+          { projectId: input.projectId },
+          { organizationId: input.organizationId },
+        ],
+      },
+      select: { amount: true, source: true, paddleTransactionId: true },
+    }),
+    prisma.paddleTransaction.findMany({
+      where: {
+        OR: [
+          { projectId: input.projectId },
+          { organizationId: input.organizationId },
+        ],
+        status: { in: PAID_TRANSACTION_STATUSES },
+        creditAmount: { gt: 0 },
+      },
+      select: { paddleTransactionId: true, creditAmount: true },
+    }),
+  ])
+  const ledgeredTransactionIds = new Set(
+    ledgerEntries
+      .filter((entry) => entry.source === CREDIT_PURCHASE_SOURCE && entry.paddleTransactionId)
+      .map((entry) => entry.paddleTransactionId)
+  )
+  const ledgerPurchasedCredits = ledgerEntries
+    .filter((entry) => entry.amount > 0)
+    .reduce((sum, entry) => sum + entry.amount, 0)
+  const legacyPurchasedCredits = creditTransactions
+    .filter((transaction) => !ledgeredTransactionIds.has(transaction.paddleTransactionId))
+    .reduce((sum, transaction) => sum + (transaction.creditAmount ?? 0), 0)
+  const consumedCredits = Math.abs(
+    ledgerEntries
+      .filter((entry) => entry.amount < 0)
+      .reduce((sum, entry) => sum + entry.amount, 0)
+  )
+
+  return {
+    purchasedCredits: ledgerPurchasedCredits + legacyPurchasedCredits,
+    consumedCredits,
+  }
+}
+
 /**
  * Returns the current project entitlement summary from signed billing evidence.
  */
@@ -79,33 +127,36 @@ export async function getProjectBillingEntitlement(projectId: string, prisma: Bi
   })
   if (!project) return null
 
-  const latestSubscription = await prisma.paddleSubscription.findFirst({
-    where: {
-      OR: [{ projectId }, { organizationId: project.organizationId }],
-    },
-    orderBy: { updatedAt: "desc" },
-  })
-  const recentTransactions = await prisma.paddleTransaction.findMany({
-    where: {
-      OR: [{ projectId }, { organizationId: project.organizationId }],
-    },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  })
+  const [latestSubscription, recentTransactions] = await Promise.all([
+    prisma.paddleSubscription.findFirst({
+      where: {
+        OR: [{ projectId }, { organizationId: project.organizationId }],
+      },
+      orderBy: { updatedAt: "desc" },
+    }),
+    prisma.paddleTransaction.findMany({
+      where: {
+        OR: [{ projectId }, { organizationId: project.organizationId }],
+      },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    }),
+  ])
   const planEvidence = getBillingPlanFromEvidence({
     subscription: latestSubscription,
     transactions: recentTransactions as never[],
   })
   const periodStart = getEntitlementPeriodStart(latestSubscription)
-  const usage = await getUsageCounts(prisma, projectId, periodStart)
-  const purchasedCredits = recentTransactions
-    .filter((transaction) => PAID_TRANSACTION_STATUSES.includes(transaction.status.toLowerCase()))
-    .reduce((sum, transaction) => sum + (transaction.creditAmount ?? 0), 0)
+  const [usage, creditLedgerTotals] = await Promise.all([
+    getUsageCounts(prisma, projectId, periodStart),
+    getCreditLedgerTotals(prisma, { projectId, organizationId: project.organizationId }),
+  ])
   const operationsPolicy = normalizeProjectOperationsPolicy(project.operationsPolicy)
   const entitlement = buildUsageEntitlement({
     planId: planEvidence.plan.id,
     usage,
-    purchasedCredits,
+    purchasedCredits: creditLedgerTotals.purchasedCredits,
+    consumedCredits: creditLedgerTotals.consumedCredits,
     spendProtection: operationsPolicy.spendProtection,
   })
 
@@ -166,7 +217,9 @@ export async function authorizeProjectUsage(prisma: BillingPrisma, input: {
     resource: input.resource,
     limit: decision.limit,
     used: decision.used,
+    creditsNeeded: decision.creditsNeeded,
     creditsRemaining: decision.creditsRemainingAfter,
+    organizationId: summary.organizationId,
     plan: {
       id: summary.plan.id,
       name: summary.plan.name,
@@ -175,4 +228,83 @@ export async function authorizeProjectUsage(prisma: BillingPrisma, input: {
       provisionalEndsAt: summary.provisionalEndsAt,
     },
   }
+}
+
+/**
+ * Consumes prepaid credits for allowed overage writes with idempotent ledger evidence.
+ */
+export async function consumeProjectUsageCredits(prisma: BillingPrisma, input: {
+  projectId: string
+  resource: BillingResourceKind
+  amount?: number
+  idempotencyKey: string
+  description: string
+  metadata?: Prisma.InputJsonValue
+}) {
+  const authorization = await authorizeProjectUsage(prisma, {
+    projectId: input.projectId,
+    resource: input.resource,
+    amount: input.amount ?? 1,
+  })
+  const creditsNeeded = authorization.creditsNeeded ?? 0
+  if (!authorization.allowed || creditsNeeded <= 0) {
+    return { ...authorization, creditsCharged: 0 }
+  }
+  if (!authorization.organizationId) {
+    return {
+      ...authorization,
+      allowed: false,
+      status: 404,
+      error: "Project not found for billing credit ledger.",
+      creditsCharged: 0,
+    }
+  }
+
+  await prisma.billingCreditLedgerEntry.upsert({
+    where: { idempotencyKey: input.idempotencyKey },
+    update: {},
+    create: {
+      source: CREDIT_USAGE_SOURCE,
+      amount: -creditsNeeded,
+      resource: input.resource,
+      description: input.description,
+      idempotencyKey: input.idempotencyKey,
+      metadata: input.metadata,
+      projectId: input.projectId,
+      organizationId: authorization.organizationId,
+    },
+  })
+
+  return { ...authorization, creditsCharged: creditsNeeded }
+}
+
+/**
+ * Idempotently grants durable prepaid credits after a verified paid credit-pack transaction.
+ */
+export async function grantPurchasedCredits(prisma: BillingPrisma, input: {
+  organizationId: string
+  projectId?: string | null
+  userId?: string | null
+  paddleTransactionId: string
+  credits: number
+  billingKey?: string | null
+}) {
+  if (input.credits <= 0) return null
+
+  return prisma.billingCreditLedgerEntry.upsert({
+    where: { idempotencyKey: `${CREDIT_PURCHASE_SOURCE}:${input.paddleTransactionId}` },
+    update: {},
+    create: {
+      source: CREDIT_PURCHASE_SOURCE,
+      amount: input.credits,
+      resource: "credit_pack",
+      description: "Prepaid credits purchased through verified checkout.",
+      idempotencyKey: `${CREDIT_PURCHASE_SOURCE}:${input.paddleTransactionId}`,
+      paddleTransactionId: input.paddleTransactionId,
+      userId: input.userId ?? null,
+      organizationId: input.organizationId,
+      projectId: input.projectId ?? null,
+      metadata: { billingKey: input.billingKey ?? null },
+    },
+  })
 }

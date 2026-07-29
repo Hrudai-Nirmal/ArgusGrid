@@ -502,6 +502,14 @@ type BillingStatusSnapshot = {
     billedAt: string | null
     createdAt: string
   }[]
+  creditLedger: {
+    id: string
+    source: string
+    amount: number
+    resource: string | null
+    description: string
+    createdAt: string
+  }[]
 }
 type ProjectOperationsPolicyRecord = WorkspacePayload["project"]["operationsPolicy"]
 type OperationalStatus = "ready" | "warning" | "blocked"
@@ -1878,7 +1886,7 @@ export function MeridianDashboard({
       return
     }
     setBillingStatus(payload.billing ?? null)
-    setBillingStatusMessage("Billing status loaded from verified Paddle records.")
+    setBillingStatusMessage("Billing status loaded from verified billing records.")
   }, [initialWorkspace.project.id])
 
   const openCustomerPortal = useCallback(async () => {
@@ -1886,7 +1894,7 @@ export function MeridianDashboard({
       setBillingStatusMessage("Only owners and admins can manage subscriptions.")
       return
     }
-    setBillingStatusMessage("Opening Paddle customer portal...")
+    setBillingStatusMessage("Opening billing portal...")
     const response = await fetch("/api/billing/portal", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1894,11 +1902,11 @@ export function MeridianDashboard({
     })
     const payload = await response.json().catch(() => null)
     if (!response.ok || typeof payload?.url !== "string") {
-      setBillingStatusMessage(payload?.error ?? "Paddle customer portal failed to open.")
+      setBillingStatusMessage(payload?.error ?? "Billing portal failed to open.")
       return
     }
     window.open(payload.url, "_blank", "noopener,noreferrer")
-    setBillingStatusMessage("Paddle customer portal opened in a new tab.")
+    setBillingStatusMessage("Billing portal opened in a new tab.")
   }, [canManageOrganization, initialWorkspace.project.id])
 
   const loadProductionObservability = async () => {
@@ -3274,7 +3282,7 @@ export function MeridianDashboard({
                 <div className="grid gap-2">
               <ReadinessItem label="Database connected" ready={initialWorkspace.diagnostics.checks.database} />
               <ReadinessItem label="Database schema current" ready={initialWorkspace.diagnostics.checks.schema} />
-              <ReadinessItem label="GitHub OAuth ready" ready={initialWorkspace.diagnostics.checks.auth} />
+              <ReadinessItem label="Authentication ready" ready={initialWorkspace.diagnostics.checks.auth} />
                   <ReadinessItem label="Encryption enabled" ready={initialWorkspace.diagnostics.checks.encryption} />
                   <ReadinessItem label="Cron secret configured" ready={initialWorkspace.diagnostics.checks.cron} />
                   <ReadinessItem label="Email provider configured" ready={initialWorkspace.diagnostics.checks.email} />
@@ -6314,7 +6322,7 @@ function TestingSection({
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               <ReadinessItem label="Database connected" ready={diagnostics.checks.database} />
               <ReadinessItem label="Database schema current" ready={diagnostics.checks.schema} />
-              <ReadinessItem label="GitHub OAuth ready" ready={diagnostics.checks.auth} />
+              <ReadinessItem label="Authentication ready" ready={diagnostics.checks.auth} />
               <ReadinessItem label="Encryption enabled" ready={diagnostics.checks.encryption} />
               <ReadinessItem label="Cron secret configured" ready={diagnostics.checks.cron} />
               <ReadinessItem label="Email provider configured" ready={diagnostics.checks.email} />
@@ -6805,7 +6813,7 @@ declare global {
 function loadPaddleCheckoutScript() {
   return new Promise<void>((resolve, reject) => {
     if (typeof window === "undefined") {
-      reject(new Error("Paddle checkout is available only in the browser."))
+      reject(new Error("Secure checkout is available only in the browser."))
       return
     }
     if (window.Paddle) {
@@ -6815,7 +6823,7 @@ function loadPaddleCheckoutScript() {
     const existingScript = document.querySelector<HTMLScriptElement>('script[src="https://cdn.paddle.com/paddle/v2/paddle.js"]')
     if (existingScript) {
       existingScript.addEventListener("load", () => resolve(), { once: true })
-      existingScript.addEventListener("error", () => reject(new Error("Paddle checkout failed to load.")), { once: true })
+      existingScript.addEventListener("error", () => reject(new Error("Secure checkout failed to load.")), { once: true })
       return
     }
 
@@ -6823,7 +6831,7 @@ function loadPaddleCheckoutScript() {
     script.src = "https://cdn.paddle.com/paddle/v2/paddle.js"
     script.async = true
     script.onload = () => resolve()
-    script.onerror = () => reject(new Error("Paddle checkout failed to load."))
+    script.onerror = () => reject(new Error("Secure checkout failed to load."))
     document.body.appendChild(script)
   })
 }
@@ -6898,11 +6906,11 @@ function BillingSection({
     }
 
     setCheckoutLoadingId(checkoutId)
-    setCheckoutMessage("Opening Paddle checkout...")
+    setCheckoutMessage("Opening secure checkout...")
     try {
       await loadPaddleCheckoutScript()
       if (!window.Paddle) {
-        setCheckoutMessage("Paddle checkout script loaded, but the checkout modal is unavailable.")
+        setCheckoutMessage("Secure checkout loaded, but the checkout modal is unavailable.")
         setCheckoutLoadingId(null)
         return
       }
@@ -6914,12 +6922,12 @@ function BillingSection({
         eventCallback: (event) => {
           if (event.name === "checkout.completed") {
             setCheckoutLoadingId(null)
-            setCheckoutMessage("Paddle checkout completed. Waiting for the verified Paddle webhook to update your subscription or credits.")
+            setCheckoutMessage("Checkout completed. Waiting for verified billing confirmation to update your subscription or credits.")
             void onRefreshBillingStatus()
           }
           if (event.name === "checkout.closed") {
             setCheckoutLoadingId(null)
-            setCheckoutMessage("Paddle checkout was closed before payment completed.")
+            setCheckoutMessage("Checkout was closed before payment completed.")
           }
         },
       })
@@ -6935,10 +6943,10 @@ function BillingSection({
           theme: "light",
         },
       })
-      setCheckoutMessage(`${description} opened in Paddle checkout.`)
+      setCheckoutMessage(`${description} opened in secure checkout.`)
     } catch (checkoutError) {
       setCheckoutLoadingId(null)
-      setCheckoutMessage(checkoutError instanceof Error ? checkoutError.message : "Paddle checkout failed to start.")
+      setCheckoutMessage(checkoutError instanceof Error ? checkoutError.message : "Secure checkout failed to start.")
     }
   }
 
@@ -6949,10 +6957,10 @@ function BillingSection({
           <CardHeader className="flex flex-row items-start justify-between gap-3">
             <div>
               <CardTitle>Subscription management</CardTitle>
-              <CardDescription>Verified Paddle webhook state for this project and organization. Payment credentials stay inside Paddle.</CardDescription>
+              <CardDescription>Verified subscription state for this project and organization. Payment credentials stay with the billing provider.</CardDescription>
             </div>
             <div className="flex flex-wrap justify-end gap-2">
-              <Button size="sm" variant="outline" onClick={onRefreshBillingStatus}>Refresh billing</Button>
+              <Button size="sm" variant="outline" onClick={onRefreshBillingStatus}>Refresh status</Button>
               <Button size="sm" onClick={onOpenCustomerPortal} disabled={!canManageOrganization || !billingStatus?.customer.hasCustomer}>
                 Manage subscription
               </Button>
@@ -6976,7 +6984,7 @@ function BillingSection({
                   Next billed: {formatDateTime(billingStatus?.subscription.nextBilledAt)}. Period ends: {formatDateTime(billingStatus?.subscription.currentPeriodEndsAt)}.
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  Customer: {billingStatus?.customer.email ?? (billingStatus?.customer.hasCustomer ? "Stored in Paddle" : "No Paddle customer yet")}.
+                  Customer: {billingStatus?.customer.email ?? (billingStatus?.customer.hasCustomer ? "Stored with billing provider" : "No billing customer yet")}.
                 </div>
                 {entitlement ? (
                   <>
@@ -6996,7 +7004,7 @@ function BillingSection({
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <div className="font-medium">Billing history</div>
-                  <div className="text-xs text-muted-foreground">Latest verified Paddle transactions mirrored by signed webhooks.</div>
+                  <div className="text-xs text-muted-foreground">Latest verified billing transactions mirrored by signed webhooks.</div>
                 </div>
                 <Badge variant="outline">{billingStatus?.transactions.length ?? 0} shown</Badge>
               </div>
@@ -7004,7 +7012,7 @@ function BillingSection({
                 {billingStatus?.transactions.length ? billingStatus.transactions.map((transaction) => (
                   <div key={transaction.id} className="grid gap-1 rounded-lg border bg-muted/20 p-3 text-xs">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="font-medium capitalize">{transaction.billingKey?.replaceAll("_", " ") ?? "Paddle transaction"}</span>
+                      <span className="font-medium capitalize">{transaction.billingKey?.replaceAll("_", " ") ?? "Billing transaction"}</span>
                       <Badge variant={transaction.status === "paid" || transaction.status === "completed" ? "secondary" : "outline"}>{transaction.status}</Badge>
                     </div>
                     <div className="text-muted-foreground">
@@ -7012,10 +7020,18 @@ function BillingSection({
                       {transaction.creditAmount ? ` / ${formatBillingNumber(transaction.creditAmount)} credits` : ""}
                     </div>
                     <div className="text-muted-foreground">Recorded {formatDateTime(transaction.completedAt ?? transaction.createdAt)}</div>
+                    <a
+                      className="w-fit text-primary underline-offset-4 hover:underline"
+                      href={`/api/billing/invoices/${transaction.id}?projectId=${encodeURIComponent(project.id)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Download invoice
+                    </a>
                   </div>
                 )) : (
                   <div className="rounded-lg border border-dashed p-4 text-xs text-muted-foreground">
-                    No verified Paddle transactions are mirrored yet. Complete a sandbox checkout and wait for the signed webhook, then refresh billing.
+                    No verified billing transactions are mirrored yet. Complete checkout and wait for signed confirmation, then refresh status.
                   </div>
                 )}
               </div>
@@ -7034,19 +7050,19 @@ function BillingSection({
         <Card id="billing-plans">
           <CardHeader>
             <CardTitle>Plans</CardTitle>
-            <CardDescription>Beta pricing in USD and INR. Paid actions open Paddle Billing checkout when the matching price IDs are configured.</CardDescription>
+            <CardDescription>Beta pricing in USD and INR. Paid actions open secure checkout when the matching monthly or credit-pack price IDs are configured.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3">
             <div className="rounded-lg border bg-muted/20 p-3 text-sm">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <div className="font-medium">Paddle Billing checkout</div>
+                  <div className="font-medium">Secure billing checkout</div>
                   <div className="mt-1 text-xs text-muted-foreground">
-                    Paddle is the primary SaaS checkout path. Add a Paddle client-side token, server API key, signed webhook secret, and one `pri_...` price ID per paid plan or credit pack. Successful payments update the subscription panel through verified Paddle webhooks.
-                    {!paddleClientToken ? " Paddle is not configured yet." : ` Paddle environment: ${paddleEnvironment}.`}
+                    Monthly plans renew automatically until canceled. Credit packs are one-time top-ups that do not expire. Successful payments update this page through signed billing confirmations.
+                    {!paddleClientToken ? " Checkout is not configured yet." : ` Checkout environment: ${paddleEnvironment}.`}
                   </div>
                 </div>
-                <Badge variant={paddleClientToken ? "secondary" : "outline"}>{paddleClientToken ? "Paddle ready" : "Configure Paddle"}</Badge>
+                <Badge variant={paddleClientToken ? "secondary" : "outline"}>{paddleClientToken ? "Checkout ready" : "Configure checkout"}</Badge>
               </div>
               {checkoutMessage ? <div className="mt-2 text-xs text-muted-foreground">{checkoutMessage}</div> : null}
             </div>
@@ -7082,9 +7098,9 @@ function BillingSection({
                   {plan.monthlyInr === 0
                     ? "Current free plan"
                     : !paddlePriceIdsByCheckoutId[`plan-${plan.id}`]
-                    ? "Configure Paddle price"
+                    ? "Configure price"
                     : checkoutLoadingId === `plan-${plan.id}`
-                    ? "Opening Paddle..."
+                    ? "Opening checkout..."
                     : `Upgrade to ${plan.name}`}
                 </Button>
               </div>
@@ -7117,13 +7133,49 @@ function BillingSection({
                   }
                 >
                   {!paddlePriceIdsByCheckoutId[`credits-${pack.credits}`]
-                    ? "Configure Paddle price"
+                    ? "Configure price"
                     : checkoutLoadingId === `credits-${pack.credits}`
-                    ? "Opening Paddle..."
+                    ? "Opening checkout..."
                     : `Buy ${formatBillingNumber(pack.credits)} credits`}
                 </Button>
               </div>
             ))}
+          </CardContent>
+          <CardContent className="grid gap-3 border-t pt-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <div className="font-medium">Credit ledger</div>
+                <div className="text-xs text-muted-foreground">Top-ups do not expire. Usage charges are recorded here when included monthly usage is exhausted.</div>
+              </div>
+              <Badge variant="outline">{billingStatus?.creditLedger.length ?? 0} recent entries</Badge>
+            </div>
+            {entitlement && entitlement.creditPool > 0 && entitlement.creditsRemaining <= Math.max(10, Math.ceil(entitlement.creditPool * 0.1)) ? (
+              <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
+                Low credits alert: {formatBillingNumber(entitlement.creditsRemaining)} credits remain. Add a credit pack or switch spend protection to stop at plan limits before overage writes are blocked.
+              </div>
+            ) : null}
+            {entitlement && entitlement.creditsRemaining === 0 ? (
+              <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
+                Rate limit alert: plan usage plus credits are exhausted. Extra workflow runs, metric samples, notification jobs, and report shares may be blocked until the subscription renews or credits are added.
+              </div>
+            ) : null}
+            <div className="grid gap-2">
+              {billingStatus?.creditLedger.length ? billingStatus.creditLedger.map((entry) => (
+                <div key={entry.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-background p-3 text-xs">
+                  <div>
+                    <div className="font-medium">{entry.description}</div>
+                    <div className="text-muted-foreground">{entry.resource?.replaceAll("_", " ") ?? entry.source.replaceAll("_", " ")} / {formatDateTime(entry.createdAt)}</div>
+                  </div>
+                  <Badge variant={entry.amount >= 0 ? "secondary" : "outline"}>
+                    {entry.amount >= 0 ? "+" : ""}{formatBillingNumber(entry.amount)} credits
+                  </Badge>
+                </div>
+              )) : (
+                <div className="rounded-lg border border-dashed p-4 text-xs text-muted-foreground">
+                  No credit ledger entries yet. Credit-pack purchases and overage usage will appear here after signed billing confirmation.
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 
 import { createAlertEventWithJobs } from "@/lib/alert-events"
-import { authorizeProjectUsage } from "@/lib/billing-entitlements-server"
+import { authorizeProjectUsage, consumeProjectUsageCredits } from "@/lib/billing-entitlements-server"
 import { enforceIngestionRateLimit } from "@/lib/ingestion-rate-limits"
 import { authenticateIngestionRequest, markIngestionTokenUsed } from "@/lib/ingestion-tokens"
 import { dispatchNotificationJobs } from "@/lib/notification-jobs"
@@ -159,6 +159,18 @@ export async function POST(request: Request) {
           },
           include: { steps: true },
         })
+
+    await consumeProjectUsageCredits(transaction, {
+      projectId: token.projectId,
+      resource: "workflow_run",
+      idempotencyKey: `usage:workflow_run:${token.projectId}:${run.id}`,
+      description: "Workflow run telemetry stored.",
+      metadata: {
+        nodeId: node.id,
+        status: parsed.data.status,
+        externalId: parsed.data.externalId ?? null,
+      },
+    })
 
     await transaction.endpointNode.update({
       where: { id: node.id },

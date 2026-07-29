@@ -3,7 +3,7 @@ import { z } from "zod"
 
 import { getApiUserId, requireProjectRole } from "@/lib/api-session"
 import { createAuditLog } from "@/lib/audit-log"
-import { authorizeProjectUsage } from "@/lib/billing-entitlements-server"
+import { authorizeProjectUsage, consumeProjectUsageCredits } from "@/lib/billing-entitlements-server"
 import { getPrisma } from "@/lib/prisma"
 import { decodeReportAsset, MAX_BRAND_IMAGE_BYTES, MAX_MAP_IMAGE_BYTES } from "@/lib/report-assets.mjs"
 import { resolveReportPeriod } from "@/lib/report-periods.mjs"
@@ -173,6 +173,18 @@ export async function POST(request: Request, context: { params: Promise<{ projec
       expiresAt,
       projectId,
       createdById: userId,
+    },
+  })
+  await consumeProjectUsageCredits(prisma, {
+    projectId,
+    resource: "report_share",
+    idempotencyKey: `usage:report_share:${projectId}:${share.id}`,
+    description: "Client proof report share created.",
+    metadata: {
+      shareId: share.id,
+      periodMode: share.periodMode,
+      hasMapImage: Boolean(share.mapImageMimeType),
+      hasBrandImage: Boolean(share.brandImageMimeType),
     },
   })
   await createAuditLog(prisma, {

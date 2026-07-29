@@ -378,7 +378,7 @@ export async function GET(request: Request, context: { params: Promise<{ project
     ...paddleWebhookEvents.map((event) => ({
       id: `billing-webhook-${event.id}`,
       type: "billing" as const,
-      title: `Paddle webhook ${event.status.toLowerCase()}`,
+      title: `Billing confirmation ${event.status.toLowerCase()}`,
       message: event.errorSummary ?? event.eventType,
       status: event.status.toLowerCase(),
       entity: "billing",

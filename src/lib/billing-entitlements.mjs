@@ -15,6 +15,7 @@ const PLAN_KEYS = new Set(MERIDIAN_PRICING_PLANS.map((plan) => plan.id))
 const PAID_STATUSES = new Set(["completed", "paid"])
 const ACTIVE_SUBSCRIPTION_STATUSES = new Set(["active", "trialing", "past_due"])
 const PROVISIONAL_ACCESS_MS = 24 * 60 * 60 * 1000
+const SUBSCRIPTION_GRACE_MS = 7 * 24 * 60 * 60 * 1000
 
 export function getPlanByBillingKey(billingKey) {
   return MERIDIAN_PRICING_PLANS.find((plan) => plan.id === billingKey) ?? MERIDIAN_PRICING_PLANS[0]
@@ -26,6 +27,12 @@ function normalizeStatus(value) {
 
 function getTransactionTime(transaction) {
   const value = transaction?.completedAt ?? transaction?.billedAt ?? transaction?.createdAt
+  const date = value instanceof Date ? value : new Date(String(value ?? ""))
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function getSubscriptionPeriodEnd(subscription) {
+  const value = subscription?.currentBillingPeriodEndsAt
   const date = value instanceof Date ? value : new Date(String(value ?? ""))
   return Number.isNaN(date.getTime()) ? null : date
 }
@@ -44,6 +51,19 @@ export function getBillingPlanFromEvidence({ subscription, transactions = [], no
       source: "subscription",
       isProvisional: false,
       provisionalEndsAt: null,
+    }
+  }
+
+  const periodEnd = getSubscriptionPeriodEnd(subscription)
+  if (subscription && periodEnd && isPlanKey(subscription.billingKey)) {
+    const graceEndsAt = new Date(periodEnd.getTime() + SUBSCRIPTION_GRACE_MS)
+    if (now.getTime() <= graceEndsAt.getTime()) {
+      return {
+        plan: getPlanByBillingKey(subscription.billingKey),
+        source: "subscription_grace",
+        isProvisional: true,
+        provisionalEndsAt: graceEndsAt.toISOString(),
+      }
     }
   }
 
@@ -79,18 +99,14 @@ function getIncludedUsageOverage(plan, usage) {
   }
 }
 
-function sumOverage(overage) {
-  return overage.workflowRuns + overage.metricSamples + overage.notificationJobs + overage.reportShares
-}
-
 /**
  * Builds a complete usage entitlement summary from plan, usage, credits, and spend policy.
  */
-export function buildUsageEntitlement({ planId, usage, purchasedCredits = 0, spendProtection = "use_credits" }) {
+export function buildUsageEntitlement({ planId, usage, purchasedCredits = 0, consumedCredits = 0, spendProtection = "use_credits" }) {
   const plan = getPlanByBillingKey(planId)
   const overage = getIncludedUsageOverage(plan, usage)
   const creditPool = plan.includedCredits + Math.max(0, Number(purchasedCredits ?? 0))
-  const creditsUsed = sumOverage(overage)
+  const creditsUsed = Math.max(0, Number(consumedCredits ?? 0))
   const creditsRemaining = Math.max(0, creditPool - creditsUsed)
 
   return {
@@ -129,6 +145,7 @@ export function canConsumeEntitlementResource(entitlement, resource, amount = 1)
       reason: "Unknown billing resource.",
       limit: 0,
       used: 0,
+      creditsNeeded: 0,
       creditsRemainingAfter: entitlement.creditsRemaining,
     }
   }
@@ -145,6 +162,7 @@ export function canConsumeEntitlementResource(entitlement, resource, amount = 1)
       reason: "Within plan included usage.",
       limit,
       used,
+      creditsNeeded: 0,
       creditsRemainingAfter: entitlement.creditsRemaining,
     }
   }
@@ -155,6 +173,7 @@ export function canConsumeEntitlementResource(entitlement, resource, amount = 1)
       reason: "Project has reached the plan limit and spend protection is set to stop at plan.",
       limit,
       used,
+      creditsNeeded,
       creditsRemainingAfter: entitlement.creditsRemaining,
     }
   }
@@ -165,6 +184,7 @@ export function canConsumeEntitlementResource(entitlement, resource, amount = 1)
       reason: "Using prepaid credits after included usage.",
       limit,
       used,
+      creditsNeeded,
       creditsRemainingAfter: entitlement.creditsRemaining - creditsNeeded,
     }
   }
@@ -174,6 +194,7 @@ export function canConsumeEntitlementResource(entitlement, resource, amount = 1)
     reason: "Project has reached the plan limit and does not have enough remaining credits.",
     limit,
     used,
+    creditsNeeded,
     creditsRemainingAfter: entitlement.creditsRemaining,
   }
 }

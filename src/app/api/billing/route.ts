@@ -59,6 +59,17 @@ function serializeTransaction(transaction: Awaited<ReturnType<typeof getRecentTr
   }
 }
 
+function serializeCreditLedgerEntry(entry: Awaited<ReturnType<typeof getRecentCreditLedgerEntries>>[number]) {
+  return {
+    id: entry.id,
+    source: entry.source,
+    amount: entry.amount,
+    resource: entry.resource,
+    description: entry.description,
+    createdAt: entry.createdAt.toISOString(),
+  }
+}
+
 async function getLatestSubscription(projectId: string, organizationId: string) {
   return getPrisma().paddleSubscription.findFirst({
     where: {
@@ -84,6 +95,27 @@ async function getRecentTransactions(projectId: string, organizationId: string) 
   })
 }
 
+async function getRecentCreditLedgerEntries(projectId: string, organizationId: string) {
+  return getPrisma().billingCreditLedgerEntry.findMany({
+    where: {
+      OR: [
+        { projectId },
+        { organizationId },
+      ],
+    },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+    select: {
+      id: true,
+      source: true,
+      amount: true,
+      resource: true,
+      description: true,
+      createdAt: true,
+    },
+  })
+}
+
 /** Returns secret-safe mirrored Paddle subscription and transaction state. */
 export async function GET(request: Request) {
   const { error, userId } = await getApiUserId()
@@ -103,7 +135,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Project not found." }, { status: 404 })
   }
 
-  const [latestSubscription, paddleTransactions, paddleCustomers] = await Promise.all([
+  const [latestSubscription, paddleTransactions, paddleCustomers, creditLedgerEntries] = await Promise.all([
     getLatestSubscription(project.id, project.organizationId),
     getRecentTransactions(project.id, project.organizationId),
     prisma.paddleCustomer.findMany({
@@ -112,6 +144,7 @@ export async function GET(request: Request) {
       take: 3,
       select: { id: true, email: true, updatedAt: true },
     }),
+    getRecentCreditLedgerEntries(project.id, project.organizationId),
   ])
   const paddleSubscriptions = latestSubscription ? [latestSubscription] : []
   const entitlement = await getProjectBillingEntitlement(project.id, prisma)
@@ -145,6 +178,7 @@ export async function GET(request: Request) {
         spendProtection: entitlement.spendProtection,
       } : null,
       transactions: paddleTransactions.map(serializeTransaction),
+      creditLedger: creditLedgerEntries.map(serializeCreditLedgerEntry),
     },
   })
 }

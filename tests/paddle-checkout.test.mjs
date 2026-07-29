@@ -18,18 +18,18 @@ test("Paddle checkout helpers normalize environment and readiness safely", () =>
   assert.match(getPaddleCheckoutUnavailableReason({ clientToken: "test_client_token", priceId: "" }), /NEXT_PUBLIC_PADDLE_PRICE_/)
 })
 
-test("Billing UI wires Paddle as the primary checkout without exposing server secrets", async () => {
+test("Billing UI wires secure checkout without exposing server secrets", async () => {
   const dashboard = await readFile("src/components/meridian/dashboard.tsx", "utf8")
   const envExample = await readFile(".env.example", "utf8")
 
   assert.match(dashboard, /cdn\.paddle\.com\/paddle\/v2\/paddle\.js/)
-  assert.match(dashboard, /Paddle Billing checkout/)
+  assert.match(dashboard, /Secure billing checkout/)
   assert.match(dashboard, /startPaddleCheckout/)
   assert.match(dashboard, /NEXT_PUBLIC_PADDLE_CLIENT_TOKEN/)
   assert.match(dashboard, /NEXT_PUBLIC_PADDLE_PRICE_SOLO_BETA/)
   assert.match(dashboard, /NEXT_PUBLIC_PADDLE_PRICE_CREDITS_500/)
   assert.match(dashboard, /checkout\.completed/)
-  assert.match(dashboard, /Configure Paddle price/)
+  assert.match(dashboard, /Configure price/)
   assert.doesNotMatch(dashboard, /PADDLE_API_KEY/)
   assert.match(envExample, /NEXT_PUBLIC_PADDLE_CLIENT_TOKEN=/)
   assert.match(envExample, /NEXT_PUBLIC_PADDLE_ENVIRONMENT=/)

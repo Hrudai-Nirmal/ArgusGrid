@@ -78,6 +78,46 @@ test("credits allow controlled overage when spend protection permits it", () => 
   assert.equal(decision.creditsRemainingAfter, 975)
 })
 
+test("durable credit balances separate purchased grants from consumed usage", () => {
+  const entitlement = buildUsageEntitlement({
+    planId: "free_sandbox",
+    usage: {
+      workflowRuns: 500,
+      metricSamples: 0,
+      notificationJobs: 0,
+      reportShares: 0,
+    },
+    purchasedCredits: 750,
+    consumedCredits: 125,
+    spendProtection: "use_credits",
+  })
+
+  const decision = canConsumeEntitlementResource(entitlement, "workflow_run", 10)
+  assert.equal(entitlement.creditPool, 750)
+  assert.equal(entitlement.creditsUsed, 125)
+  assert.equal(entitlement.creditsRemaining, 625)
+  assert.equal(decision.allowed, true)
+  assert.equal(decision.creditsNeeded, 10)
+  assert.equal(decision.creditsRemainingAfter, 615)
+})
+
+test("subscription grace period keeps paid access briefly after cancellation", () => {
+  const evidence = getBillingPlanFromEvidence({
+    subscription: {
+      status: "canceled",
+      billingKey: "agency_beta",
+      currentBillingPeriodEndsAt: "2026-07-28T12:00:00Z",
+    },
+    transactions: [],
+    now: new Date("2026-08-02T12:00:00Z"),
+  })
+
+  assert.equal(evidence.plan.id, "agency_beta")
+  assert.equal(evidence.source, "subscription_grace")
+  assert.equal(evidence.isProvisional, true)
+  assert.equal(evidence.provisionalEndsAt, "2026-08-04T12:00:00.000Z")
+})
+
 test("stop-at-plan spend protection blocks overage even with credits", () => {
   const entitlement = buildUsageEntitlement({
     planId: "solo_beta",
@@ -107,6 +147,7 @@ test("billing entitlement source hooks enforcement and logs safely", async () =>
   assert.match(ingestRoute, /workflow_run/)
   assert.match(polling, /authorizeProjectUsage/)
   assert.match(polling, /metric_sample/)
+  assert.match(ingestRoute + polling, /consumeProjectUsageCredits/)
   assert.match(billingRoute, /entitlement/)
   assert.match(logsRoute, /paddleWebhookEvent/)
   assert.match(logsRoute, /billing/)

@@ -7,6 +7,7 @@ import { randomUUID } from "node:crypto"
 import type { AlertSeverity, NotificationJob, NotificationJobStatus, Prisma, PrismaClient } from "@prisma/client"
 
 import { inngest } from "@/inngest/client"
+import { consumeProjectUsageCredits } from "@/lib/billing-entitlements-server"
 import { sendEmailAttempt } from "@/lib/notifications"
 import { getPrisma } from "@/lib/prisma"
 import { logServerError } from "@/lib/server-logging"
@@ -45,22 +46,39 @@ function emailSeverityAllows(preferenceSeverity: string, alertSeverity: AlertSev
 }
 
 async function createNotificationJob(prisma: DatabaseClient, input: QueueJobInput) {
+  const entitlement = await consumeProjectUsageCredits(prisma, {
+    projectId: input.projectId,
+    resource: "notification_job",
+    idempotencyKey: `usage:notification_job:${input.idempotencyKey}`,
+    description: "Durable notification job queued.",
+    metadata: {
+      channel: input.channel,
+      eventType: input.eventType,
+      destinationId: input.destinationId ?? null,
+    },
+  })
+  const skippedForBilling = !entitlement.allowed
+
   return prisma.notificationJob.upsert({
     where: { idempotencyKey: input.idempotencyKey },
     update: {},
     create: {
       channel: input.channel,
       eventType: input.eventType,
+      status: skippedForBilling ? "SKIPPED" : "QUEUED",
       recipient: input.recipient,
       destinationId: input.destinationId,
       idempotencyKey: input.idempotencyKey,
       projectId: input.projectId,
       alertEventId: input.alertEventId,
+      lastError: skippedForBilling ? entitlement.reason : null,
+      completedAt: skippedForBilling ? new Date() : null,
       delivery: {
         create: {
           channel: input.channel,
           recipient: input.recipient,
-          status: "QUEUED",
+          status: skippedForBilling ? "SKIPPED" : "QUEUED",
+          failureReason: skippedForBilling ? entitlement.reason : null,
           provider: input.provider,
           alertEventId: input.alertEventId,
         },

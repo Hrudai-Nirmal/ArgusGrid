@@ -1,5 +1,5 @@
 /**
- * Authenticated Paddle customer portal session minting.
+ * Authenticated billing customer portal session minting.
  */
 
 import { NextResponse } from "next/server"
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
   })
 
   if (!subscription?.paddleCustomerId) {
-    return NextResponse.json({ error: "No Paddle customer is available for this project yet." }, { status: 404 })
+    return NextResponse.json({ error: "No billing customer is available for this project yet." }, { status: 404 })
   }
 
   try {
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
   } catch (portalError) {
     const incident = logServerError("paddle.portal_session_failed", portalError, { component: "billing", projectId })
     return NextResponse.json({
-      error: "Paddle customer portal is temporarily unavailable.",
+      error: "Billing portal is temporarily unavailable.",
       incidentId: incident.incidentId,
     }, { status: 502 })
   }

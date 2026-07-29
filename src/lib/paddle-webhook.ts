@@ -13,6 +13,7 @@ import {
   getPaddlePriceIdConfig,
   sanitizePaddleFailure,
 } from "@/lib/paddle-billing.mjs"
+import { grantPurchasedCredits } from "@/lib/billing-entitlements-server"
 import { getPrisma } from "@/lib/prisma"
 
 type PaddleObject = Record<string, unknown>
@@ -334,7 +335,22 @@ export async function processPaddleWebhookEvent(event: unknown, prisma: PrismaCl
         await upsertPaddleSubscription(tx, envelope.data, environment)
       }
       if (PADDLE_TRANSACTION_EVENTS.has(envelope.type)) {
-        await upsertPaddleTransaction(tx, envelope.data, environment)
+        const transaction = await upsertPaddleTransaction(tx, envelope.data, environment)
+        if (
+          transaction?.creditAmount &&
+          transaction.creditAmount > 0 &&
+          transaction.organizationId &&
+          ["completed", "paid"].includes(transaction.status.toLowerCase())
+        ) {
+          await grantPurchasedCredits(tx, {
+            organizationId: transaction.organizationId,
+            projectId: transaction.projectId,
+            userId: transaction.userId,
+            paddleTransactionId: transaction.paddleTransactionId,
+            credits: transaction.creditAmount,
+            billingKey: transaction.billingKey,
+          })
+        }
       }
 
       await tx.paddleWebhookEvent.update({

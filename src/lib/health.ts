@@ -1,7 +1,7 @@
 import "server-only"
 
 import { getAppBuildMetadata, type AppBuildMetadata } from "@/lib/app-version"
-import { hasGithubAuthConfig } from "@/lib/auth"
+import { hasAnyAuthConfig } from "@/lib/auth"
 import { isEmailConfigured } from "@/lib/notifications"
 import { getDatabaseConnectionSource, getPrisma, hasDatabaseConfig } from "@/lib/prisma"
 import { getRuntimeEnvironment, type RuntimeEnvironment } from "@/lib/runtime-environment"
@@ -60,7 +60,7 @@ export async function getReadinessStatus(): Promise<ReadinessStatus> {
   const checks = {
     database: false,
     schema: false,
-    auth: Boolean(process.env.NEXTAUTH_URL && process.env.NEXTAUTH_SECRET && hasGithubAuthConfig()),
+    auth: Boolean(process.env.NEXTAUTH_URL && process.env.NEXTAUTH_SECRET && hasAnyAuthConfig()),
     encryption: Boolean(process.env.ENCRYPTION_KEY),
     cron: Boolean(process.env.CRON_SECRET),
     email: isEmailConfigured(),

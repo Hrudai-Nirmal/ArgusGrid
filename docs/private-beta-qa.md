@@ -12,7 +12,7 @@ Use this checklist for production validation on `https://meridian.hrudainirmal.i
 
 ## Sign-In And Onboarding
 
-- Fresh signed-out browser lands on GitHub sign-in.
+- Fresh signed-out browser lands on the Meridian sign-in screen with GitHub, Google, and email/password options.
 - New-user onboarding can create a blank project.
 - New-user onboarding can create the demo project.
 - Returning users land in the dashboard without repeated onboarding.
@@ -24,7 +24,7 @@ Use this checklist for production validation on `https://meridian.hrudainirmal.i
 - `/api/health` returns safe readiness JSON without raw secret values.
 - `/api/health` includes safe version, commit, build time, and environment metadata.
 - `/api/health` includes runtime metadata for Production/Preview/Local, deployment URL, side-effect policy, background-job policy, cron policy, and safe warnings.
-- A database outage disables GitHub sign-in, shows a safe incident ID, and emits a matching structured runtime log without connection strings or credentials.
+- A database outage disables sign-in, shows a safe incident ID, and emits a matching structured runtime log without connection strings or credentials.
 
 ## Projects
 
@@ -52,14 +52,23 @@ Use this checklist for production validation on `https://meridian.hrudainirmal.i
 - Click a paid plan or credit-pack checkout button and confirm the Paddle overlay opens. In Paddle sandbox, use card `4242 4242 4242 4242`, any name, any future expiry, and security code `100`.
 - Confirm completed Paddle checkout says Meridian is waiting for the verified Paddle webhook.
 - Confirm failed payment and modal dismiss states show clear non-secret messages.
-- Refresh Billing after the webhook arrives and confirm Subscription management shows the mirrored plan/customer state and Billing history shows the transaction.
-- As an owner/admin, click `Manage subscription` and confirm Paddle customer portal opens. Confirm viewers cannot mint a portal session.
-- Confirm Billing shows entitlement source, current period, usage rows, credits used, and `Credits remaining`.
+- Click `Refresh status` after the webhook arrives and confirm Subscription management shows the mirrored plan/customer state and Billing history shows the transaction.
+- Click `Download invoice` for a billed/completed transaction and confirm the PDF download opens only for a user with access to the current project.
+- As an owner/admin, click `Manage subscription` and confirm the billing portal opens. Confirm viewers cannot mint a portal session.
+- Confirm Billing shows entitlement source, current period, usage rows, credits used, `Credits remaining`, and recent credit ledger entries.
 - If a plan payment transaction appears before its subscription webhook, confirm Billing shows provisional paid access rather than blocking the user as Free Sandbox.
-- Force a disposable project over a free/small limit and confirm workflow ingestion, metric sample persistence, or report share creation returns a safe `402` with plan/limit/credit context. Confirm `Logs` -> `Billing` shows the denial and relevant Paddle webhook events.
+- Cancel a test subscription and confirm paid access remains during the one-week grace period from the last known billing period end, then falls back when grace ends.
+- Force a disposable project over a free/small limit and confirm workflow ingestion, metric sample persistence, notification jobs, or report share creation consume credits or return a safe `402` with plan/limit/credit context. Confirm Billing shows low-credit/rate-limit warnings without exposing provider credentials.
 - Confirm Usage graphs load live bounded 30-day snapshots for nodes, workflow runs, metric samples, notification jobs, report links, and active telemetry tokens.
 - Refresh usage and confirm counts remain secret-safe: no raw tokens, webhook URLs, Slack URLs, signing secrets, encrypted payloads, env values, or credential bodies.
 - Click `Know more` in Operations Policy and confirm the explainer says policies are project-specific and currently persisted/advisory until enforcement is wired into schedulers, retention, and spend limits.
+
+## Login QA
+
+- Confirm signed-out users can continue with GitHub when GitHub OAuth is configured.
+- Configure Google OAuth with `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`, then confirm `Continue with Google` reaches Google and returns to Meridian.
+- Create an email/password account with a 12+ character password and confirm it enters the normal onboarding/workspace flow.
+- Confirm duplicate email registration returns a safe error and no raw password appears in logs, UI, network responses, or database-facing output.
 - As an owner/admin, change Operations Policy values for mode, polling frequency, notification reliability, retention, and spend protection; save and confirm the success message.
 - As a viewer/member where possible, confirm Operations Policy save controls are unavailable or rejected.
 - Open `Account` and confirm signed-in identity, organization, current project, Team/Settings shortcuts, and the only visible `Sign out` action.

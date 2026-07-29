@@ -5,7 +5,7 @@ import { JSONPath } from "jsonpath-plus"
 import { buildApiAuthHeaderEntries, getStoredAuthHeaderName } from "@/lib/api-auth-headers.mjs"
 import { createAndDispatchAlertEvent } from "@/lib/alert-events"
 import { normalizeAlertRuleMetadata, type AnomalyDirection } from "@/lib/alert-rule-metadata"
-import { authorizeProjectUsage } from "@/lib/billing-entitlements-server"
+import { authorizeProjectUsage, consumeProjectUsageCredits } from "@/lib/billing-entitlements-server"
 import { decryptSecret } from "@/lib/crypto"
 import { getPrisma } from "@/lib/prisma"
 import { DEFAULT_RETENTION_POLICY_DAYS, getRetentionCutoff } from "@/lib/retention-policy.mjs"
@@ -366,6 +366,17 @@ export async function runProjectPolling(options: { projectId?: string; force?: b
         })
         if (entitlement.allowed) {
           await prisma.metricSample.createMany({ data: samples })
+          await consumeProjectUsageCredits(prisma, {
+            projectId: node.projectId,
+            resource: "metric_sample",
+            amount: samples.length,
+            idempotencyKey: `usage:metric_sample:${node.projectId}:${node.id}:${checkedAt.toISOString()}`,
+            description: "REST metric samples stored.",
+            metadata: {
+              nodeId: node.id,
+              sampleCount: samples.length,
+            },
+          })
           createdSamples += samples.length
         } else {
           degraded = true

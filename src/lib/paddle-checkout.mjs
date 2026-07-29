@@ -26,7 +26,7 @@ export function isPaddleCheckoutReady(input) {
  * @param {{ clientToken?: string | null, priceId?: string | null }} input
  */
 export function getPaddleCheckoutUnavailableReason(input) {
-  if (!input.clientToken?.trim()) return "Add NEXT_PUBLIC_PADDLE_CLIENT_TOKEN to enable Paddle checkout."
+  if (!input.clientToken?.trim()) return "Add NEXT_PUBLIC_PADDLE_CLIENT_TOKEN to enable secure checkout."
   if (!input.priceId?.trim()) return "Add the matching NEXT_PUBLIC_PADDLE_PRICE_* value for this plan or credit pack."
   return ""
 }

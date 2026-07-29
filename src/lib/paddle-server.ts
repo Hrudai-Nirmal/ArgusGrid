@@ -28,6 +28,21 @@ function getPaddleApiKey() {
 }
 
 /**
+ * Returns server-only Paddle REST configuration for endpoints not wrapped by the SDK.
+ */
+export function getPaddleRestConfig() {
+  const apiKey = getPaddleApiKey()
+  if (!apiKey) {
+    throw new Error("Paddle API key is not configured.")
+  }
+
+  return {
+    apiKey,
+    baseUrl: getPaddleServerEnvironment() === "production" ? "https://api.paddle.com" : "https://sandbox-api.paddle.com",
+  }
+}
+
+/**
  * Creates a Paddle SDK instance using server-only credentials.
  */
 export function getPaddleInstance() {
