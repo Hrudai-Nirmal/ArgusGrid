@@ -396,7 +396,7 @@ type ProjectAlertRule = WorkspacePayload["alertRules"][number]
 type AlertTimelineFilter = "24h" | "7d" | "30d" | "all"
 type LiveConnectionState = "connecting" | "live" | "reconnecting" | "manual"
 type DashboardSection = "control-room" | "projects" | "map" | "runs" | "alerts" | "reports" | "billing" | "integrations" | "testing" | "logs" | "team" | "settings" | "account"
-type ProjectLogType = "activity" | "alerts" | "polling" | "deliveries" | "runs" | "reports" | "webhooks" | "billing" | "team" | "map"
+type ProjectLogType = "activity" | "alerts" | "polling" | "deliveries" | "runs" | "reports" | "webhooks" | "actions" | "billing" | "team" | "map"
 type ProjectLogWindow = "24h" | "7d" | "30d" | "all"
 type NotificationJobStatus = "QUEUED" | "RUNNING" | "RETRYING" | "SENT" | "FAILED" | "SKIPPED" | "CANCELLED"
 type NotificationJobRecord = {
@@ -539,6 +539,9 @@ type IngestionTokenRecord = {
 type WebhookEventFilter = "alert.opened" | "alert.resolved" | "webhook.test"
 type SlackEventFilter = "alert.opened" | "alert.resolved" | "slack.test"
 type SlackSeverity = "INFO" | "WARNING" | "CRITICAL"
+type RemediationActionType = "pause_service" | "disable_intake" | "scale_worker_down" | "trigger_rollback" | "custom_webhook"
+type RemediationActionMode = "manual" | "automatic"
+type RemediationActionEventFilter = "alert.opened" | "remediation.test"
 type ProjectWebhookRecord = {
   id: string
   name: string
@@ -554,6 +557,21 @@ type ProjectSlackRecord = {
   enabled: boolean
   minimumSeverity: SlackSeverity
   eventFilters: SlackEventFilter[]
+  createdAt: string
+  updatedAt: string
+}
+type ProjectRemediationActionRecord = {
+  id: string
+  name: string
+  actionType: RemediationActionType
+  recipient: string
+  host: string
+  enabled: boolean
+  mode: RemediationActionMode
+  minimumSeverity: SlackSeverity
+  eventFilters: RemediationActionEventFilter[]
+  cooldownMinutes: number
+  lastTriggeredAt: string | null
   createdAt: string
   updatedAt: string
 }
@@ -782,6 +800,7 @@ const sectionSubsections: Record<DashboardSection, { id: string; label: string; 
     { id: "integrations-templates", label: "Templates" },
     { id: "integrations-telemetry", label: "Telemetry" },
     { id: "integrations-slack", label: "Slack alerts" },
+    { id: "integrations-remediation", label: "Actions" },
   ],
   testing: [
     { id: "testing-readiness", label: "Readiness" },
@@ -791,6 +810,7 @@ const sectionSubsections: Record<DashboardSection, { id: string; label: string; 
     { id: "testing-usage", label: "Usage" },
     { id: "testing-polling", label: "Polling" },
     { id: "testing-notifications", label: "Notifications" },
+    { id: "testing-actions", label: "Actions" },
     { id: "testing-integrations", label: "Integrations" },
     { id: "testing-endpoints", label: "API setup" },
   ],
@@ -803,6 +823,7 @@ const sectionSubsections: Record<DashboardSection, { id: string; label: string; 
     { id: "logs-runs", label: "Runs", logType: "runs" },
     { id: "logs-reports", label: "Reports", logType: "reports" },
     { id: "logs-webhooks", label: "Webhooks", logType: "webhooks" },
+    { id: "logs-actions", label: "Actions", logType: "actions" },
     { id: "logs-billing", label: "Billing", logType: "billing" },
     { id: "logs-team", label: "Team", logType: "team" },
     { id: "logs-map", label: "Map", logType: "map" },
@@ -1104,6 +1125,16 @@ export function MeridianDashboard({
   const [slackMinimumSeverity, setSlackMinimumSeverity] = useState<SlackSeverity>("WARNING")
   const [slackEventFilters, setSlackEventFilters] = useState<SlackEventFilter[]>(["alert.opened", "alert.resolved", "slack.test"])
   const [slackMessage, setSlackMessage] = useState("")
+  const [remediationActions, setRemediationActions] = useState<ProjectRemediationActionRecord[]>([])
+  const [remediationName, setRemediationName] = useState("Pause affected service")
+  const [remediationUrl, setRemediationUrl] = useState("")
+  const [remediationActionType, setRemediationActionType] = useState<RemediationActionType>("custom_webhook")
+  const [remediationMode, setRemediationMode] = useState<RemediationActionMode>("manual")
+  const [remediationMinimumSeverity, setRemediationMinimumSeverity] = useState<SlackSeverity>("CRITICAL")
+  const [remediationCooldownMinutes, setRemediationCooldownMinutes] = useState(30)
+  const [remediationEventFilters, setRemediationEventFilters] = useState<RemediationActionEventFilter[]>(["alert.opened", "remediation.test"])
+  const [remediationMessage, setRemediationMessage] = useState("")
+  const [generatedRemediationSecret, setGeneratedRemediationSecret] = useState("")
   const [logs, setLogs] = useState<ProjectLogRecord[]>([])
   const [logMeta, setLogMeta] = useState<ProjectLogMeta | null>(null)
   const [logTypeFilter, setLogTypeFilter] = useState<ProjectLogType | "">("")
@@ -2288,6 +2319,123 @@ export function MeridianDashboard({
     setSlackMessage("Slack destination deleted.")
   }
 
+  const toggleRemediationEventFilter = (event: RemediationActionEventFilter, enabled: boolean) => {
+    setRemediationEventFilters((current) => {
+      const next = enabled ? Array.from(new Set(current.concat(event))) : current.filter((candidate) => candidate !== event)
+      return next.length ? next : current
+    })
+  }
+
+  const loadRemediationActions = async () => {
+    if (!canEditProject) {
+      setRemediationMessage("Viewers cannot manage remediation actions.")
+      return
+    }
+
+    setRemediationMessage("Loading remediation actions...")
+    const response = await fetch(`/api/projects/${initialWorkspace.project.id}/remediation-actions`)
+    const payload = await response.json().catch(() => null)
+    if (!response.ok) {
+      setRemediationMessage(payload?.error ?? "Remediation actions failed to load.")
+      return
+    }
+    setRemediationActions(payload.actions ?? [])
+    setRemediationMessage("Remediation actions loaded.")
+  }
+
+  const createRemediationAction = async () => {
+    if (!canEditProject) {
+      setRemediationMessage("Viewers cannot create remediation actions.")
+      return
+    }
+
+    setRemediationMessage("Creating remediation action...")
+    setGeneratedRemediationSecret("")
+    const response = await fetch(`/api/projects/${initialWorkspace.project.id}/remediation-actions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: remediationName,
+        actionType: remediationActionType,
+        url: remediationUrl,
+        enabled: true,
+        mode: remediationMode,
+        minimumSeverity: remediationMinimumSeverity,
+        eventFilters: remediationEventFilters,
+        cooldownMinutes: remediationCooldownMinutes,
+      }),
+    })
+    const payload = await response.json().catch(() => null)
+    if (!response.ok) {
+      setRemediationMessage(payload?.error ?? "Remediation action creation failed.")
+      return
+    }
+
+    setRemediationActions((current) => [payload.action, ...current])
+    setGeneratedRemediationSecret(payload.signingSecret ?? "")
+    setRemediationMessage("Remediation action created. Copy the signing secret now and send a test action.")
+  }
+
+  const testRemediationAction = async (actionId: string) => {
+    setRemediationMessage("Sending remediation test...")
+    const response = await fetch(`/api/projects/${initialWorkspace.project.id}/remediation-actions/${actionId}/test`, { method: "POST" })
+    const payload = await response.json().catch(() => null)
+    if (!response.ok) {
+      setRemediationMessage(payload?.message ?? payload?.error ?? "Remediation test failed.")
+      return
+    }
+    setRemediationMessage(payload.message ?? `Remediation test ${payload.status?.toLowerCase() ?? "completed"}.`)
+    void loadProjectLogs({ type: "actions" })
+  }
+
+  const runRemediationAction = async (actionId: string, alertId?: string | null) => {
+    if (!alertId) {
+      setRemediationMessage("Select an alert before running an action.")
+      return
+    }
+    setRemediationMessage("Running remediation action...")
+    const response = await fetch(`/api/projects/${initialWorkspace.project.id}/remediation-actions/${actionId}/run`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ alertId }),
+    })
+    const payload = await response.json().catch(() => null)
+    if (!response.ok) {
+      setRemediationMessage(payload?.message ?? payload?.error ?? "Remediation action failed.")
+      return
+    }
+    setRemediationMessage(payload.message ?? `Remediation action ${payload.status?.toLowerCase() ?? "completed"}.`)
+    await refreshProjectData({ silent: true })
+  }
+
+  const toggleRemediationAction = async (action: ProjectRemediationActionRecord) => {
+    setRemediationMessage(action.enabled ? "Disabling remediation action..." : "Enabling remediation action...")
+    const response = await fetch(`/api/projects/${initialWorkspace.project.id}/remediation-actions/${action.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled: !action.enabled }),
+    })
+    const payload = await response.json().catch(() => null)
+    if (!response.ok) {
+      setRemediationMessage(payload?.error ?? "Remediation action update failed.")
+      return
+    }
+    setRemediationActions((current) => current.map((candidate) => (candidate.id === action.id ? payload.action : candidate)))
+    setRemediationMessage(payload.action.enabled ? "Remediation action enabled." : "Remediation action disabled.")
+  }
+
+  const deleteRemediationAction = async (actionId: string) => {
+    setRemediationMessage("Deleting remediation action...")
+    const response = await fetch(`/api/projects/${initialWorkspace.project.id}/remediation-actions/${actionId}`, { method: "DELETE" })
+    const payload = await response.json().catch(() => null)
+    if (!response.ok) {
+      setRemediationMessage(payload?.error ?? "Remediation action deletion failed.")
+      return
+    }
+    setRemediationActions((current) => current.filter((action) => action.id !== actionId))
+    setRemediationMessage("Remediation action deleted.")
+  }
+
   const loadReportShares = async () => {
     if (!canManageOrganization) {
       setReportMessage("Only owners and admins can manage client reports.")
@@ -2714,6 +2862,9 @@ export function MeridianDashboard({
     }
     if ((section === "integrations" || section === "testing") && canEditProject && !slackDestinations.length) {
       void loadSlackDestinations()
+    }
+    if ((section === "integrations" || section === "testing") && canEditProject && !remediationActions.length) {
+      void loadRemediationActions()
     }
     if (section === "testing" && canEditProject && !webhooks.length) {
       void loadWebhooks()
@@ -3829,6 +3980,16 @@ export function MeridianDashboard({
             slackMinimumSeverity={slackMinimumSeverity}
             slackEventFilters={slackEventFilters}
             slackMessage={slackMessage}
+            remediationActions={remediationActions}
+            remediationName={remediationName}
+            remediationUrl={remediationUrl}
+            remediationActionType={remediationActionType}
+            remediationMode={remediationMode}
+            remediationMinimumSeverity={remediationMinimumSeverity}
+            remediationCooldownMinutes={remediationCooldownMinutes}
+            remediationEventFilters={remediationEventFilters}
+            remediationMessage={remediationMessage}
+            generatedRemediationSecret={generatedRemediationSecret}
             onSelectNode={setSelectedId}
             onOpenMap={() => openDashboardSection("map")}
             onOpenSettings={() => openDashboardSection("settings")}
@@ -3845,6 +4006,18 @@ export function MeridianDashboard({
             onTestSlackDestination={testSlackDestination}
             onToggleSlackDestination={toggleSlackDestination}
             onDeleteSlackDestination={deleteSlackDestination}
+            onRemediationNameChange={setRemediationName}
+            onRemediationUrlChange={setRemediationUrl}
+            onRemediationActionTypeChange={setRemediationActionType}
+            onRemediationModeChange={setRemediationMode}
+            onRemediationMinimumSeverityChange={setRemediationMinimumSeverity}
+            onRemediationCooldownMinutesChange={setRemediationCooldownMinutes}
+            onToggleRemediationEventFilter={toggleRemediationEventFilter}
+            onLoadRemediationActions={loadRemediationActions}
+            onCreateRemediationAction={createRemediationAction}
+            onTestRemediationAction={testRemediationAction}
+            onToggleRemediationAction={toggleRemediationAction}
+            onDeleteRemediationAction={deleteRemediationAction}
           />
         ) : activeSection === "testing" ? (
           <TestingSection
@@ -3857,6 +4030,7 @@ export function MeridianDashboard({
             slackMessage={slackMessage}
             webhooks={webhooks}
             slackDestinations={slackDestinations}
+            remediationActions={remediationActions}
             notificationJobs={notificationJobs}
             notificationJobCounts={notificationJobCounts}
             notificationJobMessage={notificationJobMessage}
@@ -3874,6 +4048,8 @@ export function MeridianDashboard({
             onLoadWebhooks={loadWebhooks}
             onTestSlackDestination={testSlackDestination}
             onLoadSlackDestinations={loadSlackDestinations}
+            onTestRemediationAction={testRemediationAction}
+            onLoadRemediationActions={loadRemediationActions}
             onLoadNotificationJobs={loadNotificationJobs}
             onLoadProjectUsage={loadProjectUsage}
             onLoadProductionObservability={loadProductionObservability}
@@ -4090,6 +4266,42 @@ export function MeridianDashboard({
                 {selectedAlertDetail.slackDeliveryFailureReason ? (
                   <div className="mt-2 rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
                     {selectedAlertDetail.slackDeliveryFailureReason}
+                  </div>
+                ) : null}
+              </div>
+              <div className="rounded-lg border p-3">
+                <div className="text-xs text-muted-foreground">Latest remediation action</div>
+                <div className="font-medium">
+                  {selectedAlertDetail.remediationActionStatus
+                    ? `${selectedAlertDetail.remediationActionStatus}${selectedAlertDetail.remediationActionName ? ` via ${selectedAlertDetail.remediationActionName}` : ""}`
+                    : "No action attempted"}
+                </div>
+                {selectedAlertDetail.remediationActionAttemptedAt ? (
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    Attempted {formatDateTime(selectedAlertDetail.remediationActionAttemptedAt)}
+                    {selectedAlertDetail.remediationActionSentAt ? `, sent ${formatDateTime(selectedAlertDetail.remediationActionSentAt)}` : ""}
+                  </div>
+                ) : null}
+                {selectedAlertDetail.remediationActionFailureReason ? (
+                  <div className="mt-2 rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
+                    {selectedAlertDetail.remediationActionFailureReason}
+                  </div>
+                ) : null}
+                {!selectedAlertDetail.resolvedAt ? (
+                  <div className="mt-3 grid gap-2">
+                    <div className="text-xs font-medium text-muted-foreground">Manual approval actions</div>
+                    {remediationActions.filter((action) => action.enabled && action.mode === "manual").length ? (
+                      <div className="flex flex-wrap gap-2">
+                        {remediationActions.filter((action) => action.enabled && action.mode === "manual").slice(0, 4).map((action) => (
+                          <Button key={action.id} variant="outline" size="sm" disabled={!canManageOrganization} onClick={() => runRemediationAction(action.id, selectedAlertDetail.id)}>
+                            Run action
+                            <span className="sr-only"> {action.name}</span>
+                          </Button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-muted-foreground">No enabled manual actions loaded.</div>
+                    )}
                   </div>
                 ) : null}
               </div>
@@ -5444,6 +5656,16 @@ function IntegrationsSection({
   slackMinimumSeverity,
   slackEventFilters,
   slackMessage,
+  remediationActions,
+  remediationName,
+  remediationUrl,
+  remediationActionType,
+  remediationMode,
+  remediationMinimumSeverity,
+  remediationCooldownMinutes,
+  remediationEventFilters,
+  remediationMessage,
+  generatedRemediationSecret,
   onSelectNode,
   onOpenMap,
   onOpenSettings,
@@ -5460,6 +5682,18 @@ function IntegrationsSection({
   onTestSlackDestination,
   onToggleSlackDestination,
   onDeleteSlackDestination,
+  onRemediationNameChange,
+  onRemediationUrlChange,
+  onRemediationActionTypeChange,
+  onRemediationModeChange,
+  onRemediationMinimumSeverityChange,
+  onRemediationCooldownMinutesChange,
+  onToggleRemediationEventFilter,
+  onLoadRemediationActions,
+  onCreateRemediationAction,
+  onTestRemediationAction,
+  onToggleRemediationAction,
+  onDeleteRemediationAction,
 }: {
   nodes: EndpointNodeData[]
   selectedNodeId: string
@@ -5472,6 +5706,16 @@ function IntegrationsSection({
   slackMinimumSeverity: SlackSeverity
   slackEventFilters: SlackEventFilter[]
   slackMessage: string
+  remediationActions: ProjectRemediationActionRecord[]
+  remediationName: string
+  remediationUrl: string
+  remediationActionType: RemediationActionType
+  remediationMode: RemediationActionMode
+  remediationMinimumSeverity: SlackSeverity
+  remediationCooldownMinutes: number
+  remediationEventFilters: RemediationActionEventFilter[]
+  remediationMessage: string
+  generatedRemediationSecret: string
   onSelectNode: (nodeId: string) => void
   onOpenMap: () => void
   onOpenSettings: () => void
@@ -5488,6 +5732,18 @@ function IntegrationsSection({
   onTestSlackDestination: (slackId: string) => Promise<void>
   onToggleSlackDestination: (destination: ProjectSlackRecord) => Promise<void>
   onDeleteSlackDestination: (slackId: string) => Promise<void>
+  onRemediationNameChange: (value: string) => void
+  onRemediationUrlChange: (value: string) => void
+  onRemediationActionTypeChange: (value: RemediationActionType) => void
+  onRemediationModeChange: (value: RemediationActionMode) => void
+  onRemediationMinimumSeverityChange: (value: SlackSeverity) => void
+  onRemediationCooldownMinutesChange: (value: number) => void
+  onToggleRemediationEventFilter: (event: RemediationActionEventFilter, enabled: boolean) => void
+  onLoadRemediationActions: () => Promise<void>
+  onCreateRemediationAction: () => Promise<void>
+  onTestRemediationAction: (actionId: string) => Promise<void>
+  onToggleRemediationAction: (action: ProjectRemediationActionRecord) => Promise<void>
+  onDeleteRemediationAction: (actionId: string) => Promise<void>
 }) {
   const [selectedTemplateId, setSelectedTemplateId] = useState<IntegrationTemplate["id"]>("dify")
   const [message, setMessage] = useState("")
@@ -5806,6 +6062,115 @@ function IntegrationsSection({
                 </div>
               ) : (
                 <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">No Slack destinations loaded yet.</div>
+              )}
+            </CardContent>
+          </Card>
+          <Card id="integrations-remediation">
+            <CardHeader>
+              <CardTitle>Remediation actions</CardTitle>
+              <CardDescription>Call your own HTTPS runbook endpoint for alert response. Automatic actions are opt-in, severity-gated, cooldown protected, and HMAC signed.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-3">
+              <div className="grid gap-2">
+                <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">
+                  Action name
+                  <Input value={remediationName} onChange={(event) => onRemediationNameChange(event.target.value)} disabled={!canEditProject} />
+                </label>
+                <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">
+                  HTTPS action URL
+                  <Input value={remediationUrl} onChange={(event) => onRemediationUrlChange(event.target.value)} placeholder="https://ops.example.com/meridian/remediate" disabled={!canEditProject} />
+                </label>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">
+                    Action type
+                    <select className="h-10 rounded-lg border bg-background px-2 text-sm" value={remediationActionType} onChange={(event) => onRemediationActionTypeChange(event.target.value as RemediationActionType)} disabled={!canEditProject}>
+                      <option value="pause_service">Pause service</option>
+                      <option value="disable_intake">Disable intake</option>
+                      <option value="scale_worker_down">Scale worker down</option>
+                      <option value="trigger_rollback">Trigger rollback</option>
+                      <option value="custom_webhook">Custom webhook</option>
+                    </select>
+                  </label>
+                  <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">
+                    Approval mode
+                    <select className="h-10 rounded-lg border bg-background px-2 text-sm" value={remediationMode} onChange={(event) => onRemediationModeChange(event.target.value as RemediationActionMode)} disabled={!canEditProject}>
+                      <option value="manual">Manual approval</option>
+                      <option value="automatic">Automatic on alert</option>
+                    </select>
+                  </label>
+                  <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">
+                    Minimum severity
+                    <select className="h-10 rounded-lg border bg-background px-2 text-sm" value={remediationMinimumSeverity} onChange={(event) => onRemediationMinimumSeverityChange(event.target.value as SlackSeverity)} disabled={!canEditProject}>
+                      <option value="INFO">Info and above</option>
+                      <option value="WARNING">Warning and above</option>
+                      <option value="CRITICAL">Critical only</option>
+                    </select>
+                  </label>
+                  <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">
+                    Cooldown minutes
+                    <Input type="number" min={0} max={1440} value={remediationCooldownMinutes} onChange={(event) => onRemediationCooldownMinutesChange(Number(event.target.value))} disabled={!canEditProject} />
+                  </label>
+                </div>
+              </div>
+              <div className="grid gap-2 rounded-lg border bg-muted/20 p-3 text-xs">
+                <div className="font-medium">Events</div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {([
+                    ["alert.opened", "Alert opened"],
+                    ["remediation.test", "Test action"],
+                  ] as [RemediationActionEventFilter, string][]).map(([event, label]) => (
+                    <label key={event} className="flex items-center gap-2 text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        checked={remediationEventFilters.includes(event)}
+                        onChange={(changeEvent) => onToggleRemediationEventFilter(event, changeEvent.target.checked)}
+                        disabled={!canEditProject}
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                Your receiver should verify `X-Meridian-Signature` using the one-time signing secret. Meridian sends safe alert/action metadata only, never tokens or environment values.
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={onCreateRemediationAction} disabled={!canEditProject || !remediationName.trim() || !remediationUrl.trim()}>
+                  <ShieldCheck data-icon="inline-start" />
+                  Create action
+                </Button>
+                <Button variant="outline" onClick={onLoadRemediationActions} disabled={!canEditProject}>Refresh actions</Button>
+              </div>
+              {generatedRemediationSecret ? (
+                <div className="rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
+                  <div className="font-medium">Copy this signing secret now. It will not be shown again.</div>
+                  <code className="mt-2 block overflow-x-auto rounded bg-background px-2 py-1 font-mono text-[11px] text-foreground">{generatedRemediationSecret}</code>
+                </div>
+              ) : null}
+              {remediationMessage ? <div className="text-xs text-muted-foreground">{remediationMessage}</div> : null}
+              {remediationActions.length ? (
+                <div className="grid gap-2">
+                  {remediationActions.map((action) => (
+                    <div key={action.id} className="grid gap-2 rounded-md border bg-background p-2 text-xs">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="truncate font-medium">{action.name}</div>
+                          <div className="mt-1 text-muted-foreground">{action.actionType} / {action.mode === "automatic" ? "Automatic on alert" : "Manual approval"} / {action.minimumSeverity}+ / {action.cooldownMinutes}m cooldown</div>
+                          <div className="mt-1 truncate text-muted-foreground">{action.recipient}</div>
+                          {action.lastTriggeredAt ? <div className="mt-1 text-muted-foreground">Last sent {formatDateTime(action.lastTriggeredAt)}</div> : null}
+                        </div>
+                        <Badge variant={action.enabled ? "secondary" : "outline"}>{action.enabled ? "Enabled" : "Disabled"}</Badge>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button variant="outline" size="sm" onClick={() => onTestRemediationAction(action.id)} disabled={!canManageOrganization || !action.enabled}>Test action</Button>
+                        <Button variant="ghost" size="sm" onClick={() => onToggleRemediationAction(action)} disabled={!canEditProject}>{action.enabled ? "Disable" : "Enable"}</Button>
+                        <Button variant="ghost" size="sm" onClick={() => onDeleteRemediationAction(action.id)} disabled={!canEditProject}>Delete</Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">No remediation actions loaded yet.</div>
               )}
             </CardContent>
           </Card>
@@ -6246,6 +6611,7 @@ function TestingSection({
   slackMessage,
   webhooks,
   slackDestinations,
+  remediationActions,
   notificationJobs,
   notificationJobCounts,
   notificationJobMessage,
@@ -6263,6 +6629,8 @@ function TestingSection({
   onLoadWebhooks,
   onTestSlackDestination,
   onLoadSlackDestinations,
+  onTestRemediationAction,
+  onLoadRemediationActions,
   onLoadNotificationJobs,
   onLoadProjectUsage,
   onLoadProductionObservability,
@@ -6284,6 +6652,7 @@ function TestingSection({
   slackMessage: string
   webhooks: ProjectWebhookRecord[]
   slackDestinations: ProjectSlackRecord[]
+  remediationActions: ProjectRemediationActionRecord[]
   notificationJobs: NotificationJobRecord[]
   notificationJobCounts: Record<string, number>
   notificationJobMessage: string
@@ -6301,6 +6670,8 @@ function TestingSection({
   onLoadWebhooks: () => Promise<void>
   onTestSlackDestination: (slackId: string) => Promise<void>
   onLoadSlackDestinations: () => Promise<void>
+  onTestRemediationAction: (actionId: string) => Promise<void>
+  onLoadRemediationActions: () => Promise<void>
   onLoadNotificationJobs: () => Promise<void>
   onLoadProjectUsage: () => Promise<void>
   onLoadProductionObservability: () => Promise<void>
@@ -6595,6 +6966,36 @@ function TestingSection({
           </div>
         </details>
 
+        <details id="testing-actions" open className="rounded-lg border bg-background">
+          <summary className="cursor-pointer px-5 py-4 font-semibold">Remediation action tests</summary>
+          <div className="grid gap-4 px-5 pb-5">
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={onLoadRemediationActions} disabled={!canEditProject}>Refresh actions</Button>
+              <Button variant="ghost" onClick={onOpenIntegrations}>Configure actions</Button>
+            </div>
+            <div className="rounded-md border bg-muted/20 p-3 text-xs text-muted-foreground">
+              Tests send a signed `remediation.test` dry-run payload to the configured HTTPS endpoint. Manual alert-linked runs are available from Alert details.
+            </div>
+            {remediationActions.length ? (
+              <div className="grid gap-2">
+                {remediationActions.map((action) => (
+                  <div key={action.id} className="flex items-center justify-between gap-3 rounded-md border p-2 text-xs">
+                    <div className="min-w-0">
+                      <div className="truncate font-medium">{action.name}</div>
+                      <div className="truncate text-muted-foreground">{action.actionType} / {action.mode} / {action.minimumSeverity}+ / {action.host}</div>
+                    </div>
+                    <Button size="sm" variant="outline" disabled={!canManageOrganization || !action.enabled} onClick={() => onTestRemediationAction(action.id)}>
+                      Test action
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">No remediation actions loaded.</div>
+            )}
+          </div>
+        </details>
+
         <details id="testing-integrations" className="rounded-lg border bg-background">
           <summary className="cursor-pointer px-5 py-4 font-semibold">Integration readiness and test runs</summary>
           <div className="grid gap-3 px-5 pb-5 text-sm">
@@ -6671,7 +7072,7 @@ function LogsSection({
         <Card>
           <CardHeader>
             <CardTitle>Unified logs</CardTitle>
-            <CardDescription>Safe operational timeline across project activity, alerts, polling, deliveries, runs, reports, webhooks, team, and map changes.</CardDescription>
+            <CardDescription>Safe operational timeline across project activity, alerts, polling, deliveries, runs, reports, webhooks, actions, team, and map changes.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3">
             <div className="grid gap-2 lg:grid-cols-[160px_150px_150px_1fr_auto_auto]">
@@ -6684,6 +7085,7 @@ function LogsSection({
                 <option value="runs">Runs</option>
                 <option value="reports">Reports</option>
                 <option value="webhooks">Webhooks</option>
+                <option value="actions">Actions</option>
                 <option value="billing">Billing</option>
                 <option value="team">Team</option>
                 <option value="map">Map</option>

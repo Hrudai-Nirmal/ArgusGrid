@@ -76,7 +76,7 @@ Owners/admins can send a harmless test alert email from Testing after `RESEND_AP
 
 Owners/admins can also run a project poll manually from Testing for demos. The public `/api/demo/metric` route returns a deterministic sample for private-beta alert QA.
 
-The dashboard information architecture keeps Settings configuration-only: notification preferences, telemetry tokens, and project environment context. Integrations owns setup for telemetry providers, generic alert webhooks, and native Slack destinations. Testing owns deployment readiness, manual poll, test email, webhook/Slack tests, integration readiness, endpoint setup shortcuts, and demo metric QA. Logs provides a unified safe project timeline with 24h/7d/30d/All windows, type filters, search, and entries from audit activity, alerts, polling, deliveries, runs, reports, webhooks, Slack, team actions, and map changes.
+The dashboard information architecture keeps Settings configuration-only: notification preferences, telemetry tokens, and project environment context. Integrations owns setup for telemetry providers, generic alert webhooks, native Slack destinations, and safe remediation actions. Testing owns deployment readiness, manual poll, test email, webhook/Slack/action tests, integration readiness, endpoint setup shortcuts, and demo metric QA. Logs provides a unified safe project timeline with 24h/7d/30d/All windows, type filters, search, and entries from audit activity, alerts, polling, deliveries, runs, reports, webhooks, Slack, remediation actions, team actions, and map changes.
 
 When a main dashboard section is selected, the sidebar switches to contextual mode: the active section heading acts as a back button and one-level subsection anchors appear below it. Back returns to the main section list without changing the active page.
 
@@ -158,6 +158,19 @@ The signature is HMAC SHA-256 over `timestamp.rawJsonBody` using the destination
 During the rename transition, webhook deliveries also include the deprecated `X-ArgusGrid-*` header aliases and an `argusgrid` payload metadata alias. Ingestion accepts both `X-Meridian-Token` and the deprecated `X-ArgusGrid-Token`; bearer authentication is unchanged. New integrations should use Meridian names.
 
 Native Slack alert destinations also live in `Integrations`, using Slack incoming webhook URLs. Create a Slack destination with a friendly name, a `https://hooks.slack.com/...` incoming webhook URL, minimum severity, and event filters for `alert.opened`, `alert.resolved`, and `slack.test`. The webhook URL is encrypted, write-only, and never returned to the browser after creation. Meridian queues Slack Block Kit messages for matching enabled destinations, retries through durable jobs, and records delivery evidence in alert details and Logs.
+
+Safe remediation actions live in `Integrations` -> `Remediation actions`. Owners/admins can configure a signed HTTPS runbook endpoint for action types such as pause service, disable intake, scale worker down, trigger rollback, or custom webhook. Each action has manual approval or automatic-on-alert mode, minimum severity, event filters, and a cooldown window. Automatic mode is opt-in and only runs for newly opened incidents after the alert is committed; grouped repeat incidents do not retrigger actions during the same unresolved incident. `Testing` can send a dry-run `remediation.test`, alert details can run enabled manual actions against the selected incident, and Logs has an `Actions` filter for safe attempt evidence. Action URLs and signing secrets are never shown in Logs or alert detail; the one-time signing secret is shown only at creation.
+
+Remediation action receivers should verify:
+
+```text
+X-Meridian-Action: alert.opened | remediation.test
+X-Meridian-Delivery: remediation_<uuid>
+X-Meridian-Timestamp: <ISO timestamp>
+X-Meridian-Signature: sha256=<hmac_sha256(timestamp + "." + raw_json_body)>
+```
+
+The payload includes safe project, action, node/rule, and alert metadata plus `dryRun: true` for test events. It must never include ingestion tokens, API credentials, Slack/webhook URLs, encrypted payloads, raw env values, or payment credentials.
 
 ## Durable Notification Jobs
 
@@ -314,6 +327,7 @@ Manual post-deploy checklist:
 - Notification preferences save enabled/disabled email alerts and minimum severity per signed-in user.
 - Webhook destinations can be created, tested, enabled/disabled, deleted, and copied with a one-time signing secret; disabled destinations do not receive alert events.
 - Slack destinations can be created, tested, enabled/disabled, and deleted from Integrations; list responses never expose the incoming webhook URL.
+- Remediation actions can be created with a one-time signing secret, tested as dry-run actions, manually run from alert details, optionally set to automatic-on-alert mode, and reviewed in Logs without exposing action URLs or signing secrets.
 - Logs loads a combined bounded timeline, filters by type/window/text, returns safe limit/truncation metadata, and never exposes raw secrets, raw tokens, encrypted payloads, webhook signing secrets, Slack incoming webhook URLs, env values, or private credential bodies.
 - Contextual sidebar mode shows the selected section heading/back button plus subsection anchors, and Back returns to the main section list without changing the active page content.
 - Alert rules can be created from saved parameter mappings; repeated breaches update the same incident's last-seen time and occurrence count, and rule-level suppression controls when a grouped active incident can notify again.
@@ -338,4 +352,4 @@ npm run dev
 
 On first OAuth or email/password login, Meridian creates a personal organization and owner membership, then shows onboarding to confirm organization/project names and choose demo or blank setup.
 
-The app now includes project management, team invitation acceptance, member management, encrypted API credential storage, guided metric mapping tests, visible edit-mode map connection handles with editable link labels, focused basic/advanced integration templates, compact threshold/anomaly alert-rule management with baseline previews, signed outbound alert webhooks, native Slack incoming-webhook alerts, cron/manual polling, SSE-first live update signals with Control Room status and manual fallback, workflow run telemetry ingestion with hashed project tokens and durable rate limits, secure client report links, bounded CSV exports, PNG map export, SDK previews, a deterministic demo metric source, real metric cards and trend charts from persisted samples/rollups, first-class Testing and Logs sections, contextual sidebar subsections, audit-backed safe operational logs, retention cleanup, in-app alerts, Resend email delivery logging/test flow/preferences, and small custom node icon uploads.
+The app now includes project management, team invitation acceptance, member management, encrypted API credential storage, guided metric mapping tests, visible edit-mode map connection handles with editable link labels, focused basic/advanced integration templates, compact threshold/anomaly alert-rule management with baseline previews, signed outbound alert webhooks, native Slack incoming-webhook alerts, signed safe remediation actions, cron/manual polling, SSE-first live update signals with Control Room status and manual fallback, workflow run telemetry ingestion with hashed project tokens and durable rate limits, secure client report links, bounded CSV exports, PNG map export, SDK previews, a deterministic demo metric source, real metric cards and trend charts from persisted samples/rollups, first-class Testing and Logs sections, contextual sidebar subsections, audit-backed safe operational logs, retention cleanup, in-app alerts, Resend email delivery logging/test flow/preferences, and small custom node icon uploads.

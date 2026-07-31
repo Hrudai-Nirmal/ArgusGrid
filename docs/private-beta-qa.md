@@ -169,6 +169,11 @@ Use this checklist for production validation on `https://meridian.hrudainirmal.i
 - Confirm the Slack destination list never shows the URL.
 - Test Slack from Integrations and confirm Slack receives the Block Kit message.
 - Disable webhook/Slack destinations and confirm disabled destinations do not receive events.
+- Create a remediation action with a temporary HTTPS receiver, `Manual approval`, `Critical only`, and a short cooldown.
+- Confirm the remediation signing secret is shown once and never returned after refresh.
+- Test the remediation action from Integrations and confirm the receiver sees `remediation.test`, `dryRun: true`, and HMAC headers.
+- Trigger a disposable alert, open alert detail, click `Run action`, and confirm latest remediation action status appears without exposing the action URL or signing secret.
+- Switch a disposable action to `Automatic on alert`, trigger a new matching incident, and confirm exactly one action attempt appears while grouped repeats respect cooldown/no-duplicate behavior.
 
 ## Testing
 
@@ -188,7 +193,7 @@ Use this checklist for production validation on `https://meridian.hrudainirmal.i
 - Run manual poll and confirm latest poll metadata updates.
 - For REST metric onboarding, save API setup on a selected node, use the node inspector's `REST metric first signal` card to run the first poll, and confirm `Real sample received` shows a real persisted metric value and timestamp.
 - Send test email and confirm success/failure feedback does not expose provider secrets.
-- Send generic webhook and Slack tests from Testing.
+- Send generic webhook, Slack, and remediation action tests from Testing.
 - Run integration readiness/test-run shortcuts for the selected node.
 - Confirm endpoint/API setup shortcuts route back to the selected node workflow.
 - In API setup, confirm selecting an auth type reveals required auth header and secret fields, custom headers send the secret in the named header, and the right-side help panel updates as each field is focused.
@@ -196,9 +201,9 @@ Use this checklist for production validation on `https://meridian.hrudainirmal.i
 ## Logs
 
 - Filter Logs by 24h, 7d, 30d, and All.
-- Filter by Activity, Alerts, Polling, Deliveries, Runs, Reports, Webhooks, Team, and Map.
+- Filter by Activity, Alerts, Polling, Deliveries, Runs, Reports, Webhooks, Actions, Team, and Map.
 - Filter notification jobs by queued, running, retrying, sent, failed, skipped, and cancelled status.
-- Search for a known report, webhook, Slack destination, token, or alert action.
+- Search for a known report, webhook, Slack destination, remediation action, token, or alert action.
 - Confirm log rows show timestamp, type, title/action, entity, status, context, and safe metadata.
 - Confirm Logs shows returned/limit/truncation metadata for the current filter.
 - Confirm Logs never expose raw tokens, webhook secrets, Slack URLs, encrypted payloads, env values, or private credential bodies.
@@ -219,7 +224,7 @@ Use this checklist for production validation on `https://meridian.hrudainirmal.i
 - Confirm `/` and `/api/health` include browser security headers: `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, and `X-Frame-Options`.
 - Confirm the global `Permissions-Policy` still denies camera, microphone, geolocation, payment, accelerometer, gyroscope, USB, and browser topics.
 - Confirm public report pages and report image routes are no-store, revoked/expired links return 404, and report pages never show private team data.
-- Confirm owner/admin-only routes reject member/viewer access for telemetry tokens, webhooks, Slack destinations, report shares, report presets, CSV exports, manual polling, notification-job retry/cancel, and production observability.
+- Confirm owner/admin-only routes reject member/viewer access for telemetry tokens, webhooks, Slack destinations, remediation actions, report shares, report presets, CSV exports, manual polling, notification-job retry/cancel, and production observability.
 - Confirm logs, reports, exports, observability, and onboarding snippets do not expose raw tokens, webhook URLs, Slack URLs, signing secrets, encrypted payloads, database URLs, OAuth secrets, cron secrets, email provider keys, or env values.
 
 ## Settings

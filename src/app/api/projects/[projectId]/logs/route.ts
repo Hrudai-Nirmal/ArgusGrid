@@ -9,7 +9,7 @@ import { sanitizeAuditMetadata } from "@/lib/audit-log"
 import { getPrisma } from "@/lib/prisma"
 import { dateBoundsWhere, parseBoundedQuery } from "@/lib/query-limits"
 
-const LOG_TYPES = ["activity", "alerts", "polling", "deliveries", "runs", "reports", "webhooks", "billing", "team", "map"] as const
+const LOG_TYPES = ["activity", "alerts", "polling", "deliveries", "runs", "reports", "webhooks", "actions", "billing", "team", "map"] as const
 const JOB_STATUSES = ["queued", "running", "retrying", "sent", "failed", "skipped", "cancelled"] as const
 
 const logsQuerySchema = z.object({
@@ -37,6 +37,7 @@ type ProjectLogItem = {
 function getAuditType(entity: string, action: string): LogType {
   if (entity === "alert") return "alerts"
   if (entity === "notification-job") return "deliveries"
+  if (entity === "remediation-action") return "actions"
   if (entity === "webhook" || entity === "slack") return "webhooks"
   if (entity === "billing") return "billing"
   if (entity === "report") return "reports"
@@ -115,7 +116,7 @@ export async function GET(request: Request, context: { params: Promise<{ project
 
   const createdAtWhere = dateBoundsWhere(bounds.value)
   const sourceTake = Math.min(250, bounds.value.limit + 1)
-  const [auditLogs, alertEvents, deliveries, notificationJobs, pollExecutions, workflowRuns, reportShares, webhooks, slackDestinations, tokens, graphEdges, paddleSubscriptions, paddleTransactions] =
+  const [auditLogs, alertEvents, deliveries, notificationJobs, remediationAttempts, pollExecutions, workflowRuns, reportShares, webhooks, slackDestinations, tokens, graphEdges, paddleSubscriptions, paddleTransactions] =
     await Promise.all([
       prisma.auditLog.findMany({
         where: {
@@ -155,6 +156,18 @@ export async function GET(request: Request, context: { params: Promise<{ project
         orderBy: { createdAt: "desc" },
         take: sourceTake,
         include: { alertEvent: { include: { node: { select: { label: true } } } } },
+      }),
+      prisma.remediationActionAttempt.findMany({
+        where: {
+          projectId,
+          ...(createdAtWhere ? { attemptedAt: createdAtWhere } : {}),
+        },
+        orderBy: { attemptedAt: "desc" },
+        take: sourceTake,
+        include: {
+          action: { select: { name: true, actionType: true, mode: true } },
+          alertEvent: { include: { node: { select: { label: true } } } },
+        },
       }),
       prisma.pollExecution.findMany({
         where: createdAtWhere ? { startedAt: createdAtWhere } : undefined,
@@ -292,6 +305,26 @@ export async function GET(request: Request, context: { params: Promise<{ project
       },
       createdAt: job.updatedAt.toISOString(),
     })),
+    ...remediationAttempts.map((attempt) => ({
+      id: `remediation-attempt-${attempt.id}`,
+      type: "actions" as const,
+      title: `${attempt.action.actionType} action ${attempt.status}`,
+      message: attempt.failureReason ?? `${attempt.eventType} sent to ${attempt.action.name}`,
+      status: attempt.status.toLowerCase(),
+      entity: "remediation-action",
+      entityId: attempt.actionId,
+      nodeLabel: attempt.alertEvent?.node?.label ?? null,
+      metadata: {
+        action: attempt.action.name,
+        actionType: attempt.action.actionType,
+        mode: attempt.action.mode,
+        eventType: attempt.eventType,
+        deliveryId: attempt.deliveryId,
+        responseStatus: attempt.responseStatus,
+        sentAt: attempt.sentAt?.toISOString() ?? null,
+      },
+      createdAt: attempt.attemptedAt.toISOString(),
+    })),
     ...pollExecutions.map((poll) => ({
       id: `poll-${poll.id}`,
       type: "polling" as const,
@@ -395,7 +428,7 @@ export async function GET(request: Request, context: { params: Promise<{ project
 
   const filteredItems = items
     .filter((item) => !parsed.data.type || item.type === parsed.data.type)
-    .filter((item) => !parsed.data.jobStatus || (item.entity === "notification-job" && item.status === parsed.data.jobStatus))
+    .filter((item) => !parsed.data.jobStatus || ((item.entity === "notification-job" || item.entity === "remediation-action") && item.status === parsed.data.jobStatus))
     .filter((item) => matchesQuery(item, parsed.data.q))
     .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
   const logs = filteredItems.slice(0, bounds.value.limit)

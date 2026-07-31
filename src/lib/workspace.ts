@@ -61,6 +61,14 @@ type DbNode = EndpointNode & {
       sentAt: Date | null
       failureReason: string | null
     }[]
+    remediationAttempts: {
+      status: string
+      eventType: string
+      attemptedAt: Date
+      sentAt: Date | null
+      failureReason: string | null
+      action: { name: string; actionType: string } | null
+    }[]
   }[]
 }
 
@@ -120,6 +128,14 @@ type DbProject = Project & {
         attemptedAt: Date
         sentAt: Date | null
         failureReason: string | null
+      }[]
+      remediationAttempts: {
+        status: string
+        eventType: string
+        attemptedAt: Date
+        sentAt: Date | null
+        failureReason: string | null
+        action: { name: string; actionType: string } | null
       }[]
     }[]
   }[]
@@ -189,6 +205,12 @@ export type WorkspacePayload = {
     slackDeliveryAttemptedAt: string | null
     slackDeliverySentAt: string | null
     slackDeliveryFailureReason: string | null
+    remediationActionStatus: string | null
+    remediationActionName: string | null
+    remediationActionType: string | null
+    remediationActionAttemptedAt: string | null
+    remediationActionSentAt: string | null
+    remediationActionFailureReason: string | null
   }[]
   alertRules: {
     id: string
@@ -514,6 +536,7 @@ function projectToWorkspace(
       const latestEmailDelivery = event.deliveries.find((delivery) => delivery.channel === "email")
       const latestWebhookDelivery = event.deliveries.find((delivery) => delivery.channel === "webhook")
       const latestSlackDelivery = event.deliveries.find((delivery) => delivery.channel === "slack")
+      const latestRemediationAttempt = event.remediationAttempts[0]
       const rule = event.ruleId ? project.alertRules.find((candidate) => candidate.id === event.ruleId) : null
       const ruleMode = rule ? normalizeAlertRuleMetadata(rule.metadata).mode : null
 
@@ -545,6 +568,12 @@ function projectToWorkspace(
         slackDeliveryAttemptedAt: latestSlackDelivery?.attemptedAt.toISOString() ?? null,
         slackDeliverySentAt: latestSlackDelivery?.sentAt?.toISOString() ?? null,
         slackDeliveryFailureReason: latestSlackDelivery?.failureReason ?? null,
+        remediationActionStatus: latestRemediationAttempt?.status ?? null,
+        remediationActionName: latestRemediationAttempt?.action?.name ?? null,
+        remediationActionType: latestRemediationAttempt?.action?.actionType ?? null,
+        remediationActionAttemptedAt: latestRemediationAttempt?.attemptedAt.toISOString() ?? null,
+        remediationActionSentAt: latestRemediationAttempt?.sentAt?.toISOString() ?? null,
+        remediationActionFailureReason: latestRemediationAttempt?.failureReason ?? null,
       }
     })
   const alertRules = project.alertRules
@@ -995,6 +1024,18 @@ export async function getWorkspaceForUser(userId: string, projectId?: string) {
                   failureReason: true,
                 },
               },
+              remediationAttempts: {
+                orderBy: { attemptedAt: "desc" },
+                take: 5,
+                select: {
+                  status: true,
+                  eventType: true,
+                  attemptedAt: true,
+                  sentAt: true,
+                  failureReason: true,
+                  action: { select: { name: true, actionType: true } },
+                },
+              },
             },
             orderBy: { createdAt: "desc" },
             take: 100,
@@ -1020,6 +1061,18 @@ export async function getWorkspaceForUser(userId: string, projectId?: string) {
                   attemptedAt: true,
                   sentAt: true,
                   failureReason: true,
+                },
+              },
+              remediationAttempts: {
+                orderBy: { attemptedAt: "desc" },
+                take: 5,
+                select: {
+                  status: true,
+                  eventType: true,
+                  attemptedAt: true,
+                  sentAt: true,
+                  failureReason: true,
+                  action: { select: { name: true, actionType: true } },
                 },
               },
             },

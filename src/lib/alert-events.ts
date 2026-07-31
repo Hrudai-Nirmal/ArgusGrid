@@ -9,6 +9,7 @@ import type { AlertSeverity, Prisma, PrismaClient } from "@prisma/client"
 import { getAlertSuppressionMinutes, shouldSuppressAlertRepeat } from "@/lib/alert-noise-control.mjs"
 import { dispatchNotificationJobs, queueAlertNotificationJobs } from "@/lib/notification-jobs"
 import { getPrisma } from "@/lib/prisma"
+import { executeAutomaticRemediationActions } from "@/lib/remediation-actions"
 
 type DatabaseClient = PrismaClient | Prisma.TransactionClient
 
@@ -35,7 +36,7 @@ export type CreateAlertEventInput = {
 export async function createAlertEventWithJobs(
   prisma: DatabaseClient,
   input: CreateAlertEventInput
-): Promise<{ created: boolean; suppressed: boolean; grouped: boolean; alertEventId: string | null; jobs: QueuedNotificationJobReference[] }> {
+): Promise<{ created: boolean; suppressed: boolean; grouped: boolean; alertEventId: string | null; jobs: QueuedNotificationJobReference[]; remediationAlertEventIds: string[] }> {
   const now = input.occurredAt ?? new Date()
   const existing = await prisma.alertEvent.findFirst({
     where: { nodeId: input.nodeId, title: input.title, resolvedAt: null },
@@ -55,7 +56,7 @@ export async function createAlertEventWithJobs(
       select: { id: true },
     })
     const jobs = suppressed ? [] : await queueAlertNotificationJobs(prisma, existing.id, "alert.opened")
-    return { created: false, suppressed, grouped: true, alertEventId: existing.id, jobs }
+    return { created: false, suppressed, grouped: true, alertEventId: existing.id, jobs, remediationAlertEventIds: [] }
   }
 
   const alertEvent = await prisma.alertEvent.create({
@@ -71,7 +72,7 @@ export async function createAlertEventWithJobs(
     select: { id: true },
   })
   const jobs = await queueAlertNotificationJobs(prisma, alertEvent.id, "alert.opened")
-  return { created: true, suppressed: false, grouped: false, alertEventId: alertEvent.id, jobs }
+  return { created: true, suppressed: false, grouped: false, alertEventId: alertEvent.id, jobs, remediationAlertEventIds: [alertEvent.id] }
 }
 
 /**
@@ -82,5 +83,8 @@ export async function createAndDispatchAlertEvent(input: CreateAlertEventInput):
   const prisma = getPrisma()
   const result = await prisma.$transaction((transaction) => createAlertEventWithJobs(transaction, input))
   await dispatchNotificationJobs(result.jobs)
+  for (const alertEventId of result.remediationAlertEventIds) {
+    await executeAutomaticRemediationActions(prisma, alertEventId)
+  }
   return result.created
 }

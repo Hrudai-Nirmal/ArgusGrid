@@ -192,6 +192,8 @@ model Project {
   ingestionTokens     IngestionToken[]
   webhookDestinations ProjectWebhookDestination[]
   slackDestinations   ProjectSlackDestination[]
+  remediationActions  ProjectRemediationAction[]
+  remediationAttempts RemediationActionAttempt[]
   reportShares        ReportShare[]
   reportPresets       ReportPreset[]
   alertRules          AlertRule[]
@@ -537,6 +539,29 @@ model ProjectSlackDestination {
   @@index([minimumSeverity])
 }
 
+model ProjectRemediationAction {
+  id                     String                      @id @default(cuid())
+  name                   String
+  actionType             String                      @default("custom_webhook")
+  url                    String
+  enabled                Boolean                     @default(true)
+  mode                   String                      @default("manual")
+  minimumSeverity        AlertSeverity               @default(CRITICAL)
+  eventFilters           Json?
+  cooldownMinutes        Int                         @default(30)
+  signingSecretEncrypted String
+  lastTriggeredAt        DateTime?
+  projectId              String
+  project                Project                     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  attempts               RemediationActionAttempt[]
+  createdAt              DateTime                    @default(now())
+  updatedAt              DateTime                    @updatedAt
+
+  @@index([projectId, enabled])
+  @@index([projectId, mode])
+  @@index([minimumSeverity])
+}
+
 model ReportShare {
   id                 String    @id @default(cuid())
   token              String    @unique
@@ -731,6 +756,7 @@ model AlertEvent {
   rule             AlertRule?                  @relation(fields: [ruleId], references: [id], onDelete: SetNull)
   deliveries       AlertNotificationDelivery[]
   notificationJobs NotificationJob[]
+  remediationAttempts RemediationActionAttempt[]
   lastSeenAt       DateTime                    @default(now())
   occurrenceCount  Int                         @default(1)
   createdAt        DateTime                    @default(now())
@@ -741,6 +767,29 @@ model AlertEvent {
   @@index([nodeId, createdAt])
   @@index([ruleId, createdAt])
   @@index([createdAt])
+}
+
+model RemediationActionAttempt {
+  id             String                   @id @default(cuid())
+  actionId       String
+  projectId      String
+  alertEventId   String?
+  status         String
+  eventType      String
+  deliveryId     String                   @unique
+  responseStatus Int?
+  failureReason  String?
+  attemptedAt    DateTime                 @default(now())
+  sentAt         DateTime?
+  createdAt      DateTime                 @default(now())
+  action         ProjectRemediationAction @relation(fields: [actionId], references: [id], onDelete: Cascade)
+  project        Project                  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  alertEvent     AlertEvent?              @relation(fields: [alertEventId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, createdAt])
+  @@index([alertEventId, createdAt])
+  @@index([actionId, createdAt])
+  @@index([status, createdAt])
 }
 
 model NotificationPreference {

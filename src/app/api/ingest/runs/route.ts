@@ -7,6 +7,7 @@ import { enforceIngestionRateLimit } from "@/lib/ingestion-rate-limits"
 import { authenticateIngestionRequest, markIngestionTokenUsed } from "@/lib/ingestion-tokens"
 import { dispatchNotificationJobs } from "@/lib/notification-jobs"
 import { getPrisma } from "@/lib/prisma"
+import { executeAutomaticRemediationActions } from "@/lib/remediation-actions"
 import { evaluateRunAlertRule, normalizeRunAlertMetadata } from "@/lib/run-alert-rules.mjs"
 
 const stepSchema = z.object({
@@ -205,6 +206,7 @@ export async function POST(request: Request) {
         })
       : []
     const jobs = []
+    const remediationAlertEventIds: string[] = []
     let alertsCreated = 0
     for (const rule of runRules) {
       const evaluation = evaluateRunAlertRule(
@@ -232,11 +234,15 @@ export async function POST(request: Request) {
       })
       if (alertResult.created) alertsCreated += 1
       jobs.push(...alertResult.jobs)
+      remediationAlertEventIds.push(...alertResult.remediationAlertEventIds)
     }
 
-    return { run, jobs, alertsCreated, rulesEvaluated: runRules.length }
+    return { run, jobs, remediationAlertEventIds, alertsCreated, rulesEvaluated: runRules.length }
   })
   await dispatchNotificationJobs(transactionResult.jobs)
+  for (const alertEventId of transactionResult.remediationAlertEventIds) {
+    await executeAutomaticRemediationActions(prisma, alertEventId)
+  }
   const result = transactionResult.run
 
   return NextResponse.json({
