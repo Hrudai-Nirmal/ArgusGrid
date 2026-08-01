@@ -19,7 +19,7 @@ export async function POST(_: Request, context: { params: Promise<{ projectId: s
   const accessError = await requireProjectRole(userId, projectId, ["OWNER", "ADMIN"])
   if (accessError) return accessError
 
-  const result = await cleanupExpiredOperationalData()
+  const result = await cleanupExpiredOperationalData({ projectId })
   await createAuditLog(getPrisma(), {
     action: "retention.cleaned",
     entity: "retention",
@@ -29,5 +29,5 @@ export async function POST(_: Request, context: { params: Promise<{ projectId: s
     metadata: result,
   })
 
-  return NextResponse.json({ ok: true, result }, { status: 202 })
+  return NextResponse.json({ ok: true, effectiveRetentionDays: result.effectiveRetentionDays, result }, { status: 202 })
 }

@@ -97,6 +97,7 @@ import {
 } from "@/lib/meridian-data"
 import { integrationTemplates, type IntegrationTemplate } from "@/lib/integration-templates"
 import { buildIntegrationWizardSteps, buildProviderSetupCopy } from "@/lib/integration-wizard.mjs"
+import { getPolicyEnforcementStatusRows } from "@/lib/operations-policy-enforcement.mjs"
 import { buildPilotOnboardingChecklist } from "@/lib/pilot-onboarding.mjs"
 import { getPaddleCheckoutUnavailableReason, isPaddleCheckoutReady, normalizePaddleEnvironment } from "@/lib/paddle-checkout.mjs"
 import { buildProviderFirstSignalStatus, getProviderOnboardingCopy } from "@/lib/provider-onboarding.mjs"
@@ -4035,6 +4036,7 @@ export function MeridianDashboard({
             notificationJobCounts={notificationJobCounts}
             notificationJobMessage={notificationJobMessage}
             idleActionMessage={idleActionMessage}
+            operationsPolicy={operationsPolicy}
             projectUsage={projectUsage}
             projectUsageMessage={projectUsageMessage}
             productionObservability={productionObservability}
@@ -6616,6 +6618,7 @@ function TestingSection({
   notificationJobCounts,
   notificationJobMessage,
   idleActionMessage,
+  operationsPolicy,
   projectUsage,
   projectUsageMessage,
   productionObservability,
@@ -6657,6 +6660,7 @@ function TestingSection({
   notificationJobCounts: Record<string, number>
   notificationJobMessage: string
   idleActionMessage: string
+  operationsPolicy: ProjectOperationsPolicyRecord
   projectUsage: ProjectUsageSnapshot | null
   projectUsageMessage: string
   productionObservability: ProductionObservabilitySnapshot | null
@@ -6684,6 +6688,8 @@ function TestingSection({
   onOpenIntegrations: () => void
   onRefreshProject: () => Promise<void>
 }) {
+  const policyEnforcementRows = getPolicyEnforcementStatusRows(operationsPolicy)
+
   return (
     <SectionShell>
       <div className="mx-auto grid max-w-7xl gap-5">
@@ -6758,6 +6764,20 @@ function TestingSection({
               <MetricTile label="Retention cleanup" value="Manual" detail="Scheduled cleanup is off unless MERIDIAN_RETENTION_CLEANUP_MODE is enabled." tone="good" />
               <MetricTile label="Scheduled polling" value="Off" detail="Scheduled polling: Off by default. Use manual polling or enable an external scheduler for active pilots." tone="good" />
               <MetricTile label="Live refresh" value="Manual" detail="Dashboard SSE starts only after Go live and pauses when hidden or timed out." tone="good" />
+            </div>
+            <div className="grid gap-2 rounded-lg border bg-muted/20 p-3 text-xs">
+              <div className="font-medium">Effective project policy</div>
+              <div className="grid gap-2 md:grid-cols-2">
+                {policyEnforcementRows.map((row) => (
+                  <div key={row.id} className="rounded-md border bg-background p-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium">{row.label}</span>
+                      <Badge aria-label={`Enforced policy status for ${row.label}`} variant="secondary">{row.status}</Badge>
+                    </div>
+                    <div className="mt-1 text-muted-foreground">{row.detail}</div>
+                  </div>
+                ))}
+              </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Button size="sm" variant="outline" onClick={onRecoverQueuedJobs} disabled={!canManageOrganization}>
@@ -7274,6 +7294,7 @@ function BillingSection({
   const referencePlan = MERIDIAN_PRICING_PLANS.find((plan) => plan.id === "agency_beta") ?? MERIDIAN_PRICING_PLANS[0]
   const counts = projectUsage?.counts
   const policyCopy = getOperationsPolicyCopy(operationsPolicy)
+  const policyEnforcementRows = getPolicyEnforcementStatusRows(operationsPolicy)
   const [isPolicyDetailsOpen, setIsPolicyDetailsOpen] = useState(false)
   const [checkoutMessage, setCheckoutMessage] = useState("")
   const [checkoutLoadingId, setCheckoutLoadingId] = useState<string | null>(null)
@@ -7688,9 +7709,9 @@ function BillingSection({
                   <div>
                     Changing this policy affects the current project, not the whole account or organization. Another project can keep a different polling, retention, and spend posture.
                   </div>
-                  <div className="font-medium text-foreground">Implementation status: saved policy</div>
+                  <div className="font-medium text-foreground">Implementation status: enforced policy</div>
                   <div>
-                    These controls are persisted and audited today, but most choices are not yet automatically enforced by schedulers, retention jobs, or billing limits. They are the control contract Meridian will wire into usage enforcement next.
+                    These controls are persisted, audited, and enforced for REST metric polling cadence, manual retention cleanup, and spend behavior. Notification recovery mode remains bounded by Meridian&apos;s central zero-idle infrastructure settings.
                   </div>
                 </div>
               ) : null}
@@ -7703,6 +7724,19 @@ function BillingSection({
                 <div>Notification recovery: <span className="font-medium text-foreground">{policyCopy.reliability}</span></div>
                 <div>Retention: <span className="font-medium text-foreground">{policyCopy.retention}</span></div>
                 <div>Spend: <span className="font-medium text-foreground">{policyCopy.spend}</span></div>
+              </div>
+              <Separator />
+              <div className="grid gap-2">
+                <div className="font-medium">Policy enforcement</div>
+                {policyEnforcementRows.map((row) => (
+                  <div key={row.id} className="rounded-md border bg-background p-3 text-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-medium">{row.label}</span>
+                      <Badge variant="secondary">{row.status}</Badge>
+                    </div>
+                    <div className="mt-1 text-muted-foreground">{row.detail}</div>
+                  </div>
+                ))}
               </div>
               <Separator />
               {isPolicyDetailsOpen ? (

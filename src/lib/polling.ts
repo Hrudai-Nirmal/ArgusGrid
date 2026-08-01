@@ -7,6 +7,7 @@ import { createAndDispatchAlertEvent } from "@/lib/alert-events"
 import { normalizeAlertRuleMetadata, type AnomalyDirection } from "@/lib/alert-rule-metadata"
 import { authorizeProjectUsage, consumeProjectUsageCredits } from "@/lib/billing-entitlements-server"
 import { decryptSecret } from "@/lib/crypto"
+import { getEffectivePollingCadenceMin } from "@/lib/operations-policy-enforcement.mjs"
 import { getPrisma } from "@/lib/prisma"
 import { DEFAULT_RETENTION_POLICY_DAYS, getRetentionCutoff } from "@/lib/retention-policy.mjs"
 
@@ -15,6 +16,7 @@ type JsonDocument = string | number | boolean | object | unknown[] | null
 export type PollingResult = {
   checkedAt: string
   sampledNodes: number
+  policySkippedNodes: number
   createdSamples: number
   evaluatedAlerts: number
   rollupsQueued: number
@@ -153,12 +155,18 @@ export async function runProjectPolling(options: { projectId?: string; force?: b
       status: true,
       updatedAt: true,
       endpointConfig: { select: { id: true, cadenceMin: true } },
+      project: { select: { operationsPolicy: true } },
     },
   })
+  let policySkippedNodes = 0
   const dueCandidates = candidates
     .filter((candidate) => {
       if (options.force) return true
-      const cadenceMin = candidate.endpointConfig?.cadenceMin ?? 15
+      const cadenceMin = getEffectivePollingCadenceMin(candidate.project.operationsPolicy, candidate.endpointConfig?.cadenceMin ?? 15)
+      if (cadenceMin === null) {
+        policySkippedNodes += 1
+        return false
+      }
       return getNextPollAt(candidate.updatedAt, cadenceMin) <= checkedAt
     })
     .slice(0, MAX_NODES_PER_POLL)
@@ -177,9 +185,28 @@ export async function runProjectPolling(options: { projectId?: string; force?: b
   }
 
   if (!claimedNodeIds.length) {
+    if (options.projectId && !options.force && policySkippedNodes > 0) {
+      const project = await prisma.project.findUnique({
+        where: { id: options.projectId },
+        select: { organizationId: true },
+      })
+      if (project) {
+        await prisma.auditLog.create({
+          data: {
+            action: "polling.skipped_by_policy",
+            entity: "poll",
+            entityId: options.projectId,
+            organizationId: project.organizationId,
+            projectId: options.projectId,
+            metadata: { checkedAt: checkedAt.toISOString(), policySkippedNodes },
+          },
+        })
+      }
+    }
     return {
       checkedAt: checkedAt.toISOString(),
       sampledNodes: 0,
+      policySkippedNodes,
       createdSamples: 0,
       evaluatedAlerts: 0,
       rollupsQueued: 0,
@@ -495,6 +522,7 @@ export async function runProjectPolling(options: { projectId?: string; force?: b
   return {
     checkedAt: checkedAt.toISOString(),
     sampledNodes: nodes.length,
+    policySkippedNodes,
     createdSamples,
     evaluatedAlerts,
     rollupsQueued,

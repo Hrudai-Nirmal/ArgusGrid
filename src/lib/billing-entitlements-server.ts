@@ -260,20 +260,39 @@ export async function consumeProjectUsageCredits(prisma: BillingPrisma, input: {
     }
   }
 
-  await prisma.billingCreditLedgerEntry.upsert({
+  const existingLedgerEntry = await prisma.billingCreditLedgerEntry.findUnique({
     where: { idempotencyKey: input.idempotencyKey },
-    update: {},
-    create: {
-      source: CREDIT_USAGE_SOURCE,
-      amount: -creditsNeeded,
-      resource: input.resource,
-      description: input.description,
-      idempotencyKey: input.idempotencyKey,
-      metadata: input.metadata,
-      projectId: input.projectId,
-      organizationId: authorization.organizationId,
-    },
+    select: { id: true },
   })
+  if (!existingLedgerEntry) {
+    await prisma.billingCreditLedgerEntry.create({
+      data: {
+        source: CREDIT_USAGE_SOURCE,
+        amount: -creditsNeeded,
+        resource: input.resource,
+        description: input.description,
+        idempotencyKey: input.idempotencyKey,
+        metadata: input.metadata,
+        projectId: input.projectId,
+        organizationId: authorization.organizationId,
+      },
+    })
+    await prisma.auditLog.create({
+      data: {
+        organizationId: authorization.organizationId,
+        projectId: input.projectId,
+        action: "billing.credits_consumed",
+        entity: "billing",
+        entityId: input.projectId,
+        metadata: {
+          resource: input.resource,
+          creditsCharged: creditsNeeded,
+          idempotencyKey: input.idempotencyKey,
+          description: input.description,
+        },
+      },
+    })
+  }
 
   return { ...authorization, creditsCharged: creditsNeeded }
 }

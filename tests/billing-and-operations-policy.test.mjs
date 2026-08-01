@@ -80,6 +80,7 @@ test("schema, API, and dashboard wire billing and operations policy", async () =
   assert.match(dashboard, /Operations Policy/)
   assert.match(dashboard, /Know more/)
   assert.match(dashboard, /Policy scope: this project only/)
-  assert.match(dashboard, /Implementation status: saved policy/)
+  assert.match(dashboard, /Implementation status: enforced policy/)
+  assert.match(dashboard, /Policy enforcement/)
   assert.match(dashboard, /activeSection === "billing" && !projectUsage/)
 })

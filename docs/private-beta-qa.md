@@ -61,7 +61,7 @@ Use this checklist for production validation on `https://meridian.hrudainirmal.i
 - Force a disposable project over a free/small limit and confirm workflow ingestion, metric sample persistence, notification jobs, or report share creation consume credits or return a safe `402` with plan/limit/credit context. Confirm Billing shows low-credit/rate-limit warnings without exposing provider credentials.
 - Confirm Usage graphs load live bounded 30-day snapshots for nodes, workflow runs, metric samples, notification jobs, report links, and active telemetry tokens.
 - Refresh usage and confirm counts remain secret-safe: no raw tokens, webhook URLs, Slack URLs, signing secrets, encrypted payloads, env values, or credential bodies.
-- Click `Know more` in Operations Policy and confirm the explainer says policies are project-specific and currently persisted/advisory until enforcement is wired into schedulers, retention, and spend limits.
+- Click `Know more` in Operations Policy and confirm the explainer says policies are project-specific and enforced for polling cadence, manual retention cleanup, and spend behavior.
 
 ## Login QA
 
@@ -181,6 +181,7 @@ Use this checklist for production validation on `https://meridian.hrudainirmal.i
 - Confirm runtime safety shows Production on `https://meridian.hrudainirmal.in` with external side effects, background jobs, and cron enabled.
 - Confirm any Preview/local runtime clearly shows non-production status and does not send email, Slack, webhooks, or endpoint polling unless explicitly opted in.
 - In `Idle posture`, confirm Inngest recovery, retention cleanup, scheduled polling, and live refresh are manual/off by default.
+- Confirm `Idle posture` shows effective project policy rows with `Enforced` status.
 - Confirm `Recover queued jobs now`, `Run retention cleanup now`, and `Poll project now` are owner/admin-only and write safe Logs evidence.
 - Confirm the dashboard header starts in Manual mode, does not open live SSE on load, and only switches to live checks after clicking `Go live`.
 - In `Production observability`, click Refresh overview and confirm Ready/Warning/Blocked cards render for dependencies, runtime safety, polling, notification jobs, and usage guardrails.
