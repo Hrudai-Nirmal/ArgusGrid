@@ -442,6 +442,23 @@ type BillingStatusSnapshot = {
   checkoutConfigured: boolean
   webhookConfigured: boolean
   serverConfigured: boolean
+  sync: {
+    checkoutConfigured: boolean
+    webhookConfigured: boolean
+    serverConfigured: boolean
+    status: "healthy" | "warning" | "waiting"
+    label: string
+    message: string
+    requiresAttention: boolean
+    lastConfirmation: {
+      type: string
+      status: string
+      occurredAt: string | null
+      processedAt: string | null
+      createdAt: string
+    } | null
+    failedConfirmations: number
+  }
   subscription: {
     id: string | null
     status: string
@@ -7421,6 +7438,27 @@ function BillingSection({
                   </>
                 ) : null}
                 {billingStatusMessage ? <div className="text-xs text-muted-foreground">{billingStatusMessage}</div> : null}
+              </div>
+              <div className="mt-4 rounded-lg border bg-background p-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <div className="text-sm font-medium">Billing sync health</div>
+                    <div className="text-xs text-muted-foreground">Payments update access only after signed confirmation reaches Meridian.</div>
+                  </div>
+                  <Badge variant={billingStatus?.sync.status === "healthy" ? "secondary" : billingStatus?.sync.requiresAttention ? "destructive" : "outline"}>
+                    {billingStatus?.sync.label ?? "Not checked"}
+                  </Badge>
+                </div>
+                <div className="mt-3 grid gap-2 text-xs text-muted-foreground">
+                  <div>{billingStatus?.sync.message ?? "Click Refresh status to load billing sync health."}</div>
+                  <div>Last signed confirmation: {formatDateTime(billingStatus?.sync.lastConfirmation?.processedAt ?? billingStatus?.sync.lastConfirmation?.occurredAt ?? billingStatus?.sync.lastConfirmation?.createdAt)}</div>
+                  <div>Failed confirmations: {billingStatus?.sync.failedConfirmations ?? 0}</div>
+                  <div className="flex flex-wrap gap-2">
+                    {billingStatus?.sync.checkoutConfigured ? <Badge variant="secondary">Checkout ready</Badge> : <Badge variant="outline">Checkout setup needed</Badge>}
+                    {billingStatus?.sync.webhookConfigured ? <Badge variant="secondary">Confirmation ready</Badge> : <Badge variant="outline">Confirmation missing</Badge>}
+                    {billingStatus?.sync.serverConfigured ? <Badge variant="secondary">Account portal ready</Badge> : <Badge variant="outline">Account portal missing</Badge>}
+                  </div>
+                </div>
               </div>
             </div>
             <div className="rounded-lg border bg-background p-4">

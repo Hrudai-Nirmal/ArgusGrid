@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises"
 import { test } from "node:test"
 
 import {
+  buildBillingSyncHealthSummary,
   getMeridianBillingKeyFromPriceId,
   getPlanAccessState,
   sanitizePaddleFailure,
@@ -44,6 +45,40 @@ test("Paddle failure summaries are bounded and secret-safe", () => {
   assert.doesNotMatch(summary, /https:\/\/example\.com/)
 })
 
+test("Billing sync health summary is provider-neutral and action-oriented", () => {
+  assert.deepEqual(
+    buildBillingSyncHealthSummary({
+      checkoutConfigured: true,
+      webhookConfigured: true,
+      serverConfigured: true,
+      lastConfirmationAt: new Date("2026-08-05T08:30:00.000Z"),
+      lastConfirmationType: "transaction.completed",
+      lastConfirmationStatus: "PROCESSED",
+      failedConfirmations: 0,
+    }),
+    {
+      status: "healthy",
+      label: "Billing sync healthy",
+      message: "Last signed confirmation: transaction.completed at 2026-08-05T08:30:00.000Z.",
+      requiresAttention: false,
+    }
+  )
+
+  const missingWebhook = buildBillingSyncHealthSummary({
+    checkoutConfigured: true,
+    webhookConfigured: false,
+    serverConfigured: true,
+    lastConfirmationAt: null,
+    lastConfirmationType: null,
+    lastConfirmationStatus: null,
+    failedConfirmations: 0,
+  })
+  assert.equal(missingWebhook.status, "warning")
+  assert.equal(missingWebhook.requiresAttention, true)
+  assert.match(missingWebhook.message, /signed billing confirmation/)
+  assert.doesNotMatch(missingWebhook.message, /Paddle|pdl_|secret|webhook URL/i)
+})
+
 test("Prisma schema stores Paddle customers, subscriptions, transactions, and processed events", async () => {
   const schema = await readFile("prisma/schema.prisma", "utf8")
 
@@ -70,7 +105,7 @@ test("Paddle webhook route verifies raw signed payloads and never exposes secret
   assert.match(route, /request\.text\(\)/)
   assert.match(route, /paddle-signature/)
   assert.match(route, /webhooks\.unmarshal/)
-  assert.match(route, /PADDLE_NOTIFICATION_WEBHOOK_SECRET/)
+  assert.match(route, /getPaddleWebhookSecret/)
   assert.match(processor, /processPaddleWebhookEvent/)
   assert.match(processor, /paddleWebhookEvent\.upsert/)
   assert.match(processor, /paddleSubscription\.upsert/)
@@ -89,6 +124,9 @@ test("Billing API and UI expose mirrored Paddle state without server keys", asyn
 
   assert.match(billingRoute, /paddleSubscriptions/)
   assert.match(billingRoute, /paddleTransactions/)
+  assert.match(billingRoute, /paddleWebhookEvent/)
+  assert.match(billingRoute, /buildBillingSyncHealthSummary/)
+  assert.match(billingRoute, /hasPaddleWebhookSecret/)
   assert.match(billingRoute, /creditLedger/)
   assert.match(portalRoute, /customerPortalSessions|portalSessions/)
   assert.match(invoiceRoute, /encodeURIComponent\(transaction\.paddleTransactionId\)/)
@@ -96,6 +134,10 @@ test("Billing API and UI expose mirrored Paddle state without server keys", asyn
   assert.match(invoiceRoute, /requireProjectRole/)
   assert.match(dashboard, /Manage subscription/)
   assert.match(dashboard, /Billing history/)
+  assert.match(dashboard, /Billing sync health/)
+  assert.match(dashboard, /Last signed confirmation/)
+  assert.match(dashboard, /Failed confirmations/)
+  assert.match(dashboard, /Payments update access only after signed confirmation/)
   assert.match(dashboard, /refreshBillingStatus/)
   assert.match(dashboard, /Refresh status/)
   assert.match(dashboard, /Download invoice/)

@@ -95,6 +95,59 @@ export function getPlanAccessState(subscription) {
 }
 
 /**
+ * Builds a provider-neutral billing sync status for customer support and UI health cards.
+ */
+export function buildBillingSyncHealthSummary({
+  checkoutConfigured,
+  webhookConfigured,
+  serverConfigured,
+  lastConfirmationAt,
+  lastConfirmationType,
+  lastConfirmationStatus,
+  failedConfirmations = 0,
+}) {
+  const missing = []
+  if (!checkoutConfigured) missing.push("checkout")
+  if (!webhookConfigured) missing.push("signed billing confirmation")
+  if (!serverConfigured) missing.push("account portal")
+
+  if (missing.length > 0) {
+    return {
+      status: "warning",
+      label: "Billing sync needs setup",
+      message: `Missing ${missing.join(", ")} configuration. Payments update access only after signed billing confirmation is configured.`,
+      requiresAttention: true,
+    }
+  }
+
+  if (failedConfirmations > 0) {
+    return {
+      status: "warning",
+      label: "Billing confirmations need review",
+      message: `${failedConfirmations} signed billing confirmation${failedConfirmations === 1 ? "" : "s"} failed recently. Review billing history before adjusting access manually.`,
+      requiresAttention: true,
+    }
+  }
+
+  if (lastConfirmationAt) {
+    const timestamp = lastConfirmationAt instanceof Date ? lastConfirmationAt.toISOString() : String(lastConfirmationAt)
+    return {
+      status: "healthy",
+      label: "Billing sync healthy",
+      message: `Last signed confirmation: ${lastConfirmationType ?? "billing event"} at ${timestamp}.`,
+      requiresAttention: String(lastConfirmationStatus ?? "").toUpperCase() !== "PROCESSED",
+    }
+  }
+
+  return {
+    status: "waiting",
+    label: "Awaiting first billing confirmation",
+    message: "Checkout is configured. Complete a test payment, then refresh status after signed confirmation arrives.",
+    requiresAttention: false,
+  }
+}
+
+/**
  * Removes known secret shapes and bounds operational failure copy.
  */
 export function sanitizePaddleFailure(value) {

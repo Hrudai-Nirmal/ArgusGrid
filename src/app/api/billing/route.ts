@@ -6,8 +6,8 @@ import { NextResponse } from "next/server"
 
 import { getApiUserId, requireProjectRole } from "@/lib/api-session"
 import { getProjectBillingEntitlement } from "@/lib/billing-entitlements-server"
-import { getPlanAccessState } from "@/lib/paddle-billing.mjs"
-import { getPaddleServerEnvironment, hasPaddleServerConfig } from "@/lib/paddle-server"
+import { buildBillingSyncHealthSummary, getPlanAccessState } from "@/lib/paddle-billing.mjs"
+import { getPaddleServerEnvironment, hasPaddleServerConfig, hasPaddleWebhookSecret } from "@/lib/paddle-server"
 import { getPrisma } from "@/lib/prisma"
 
 export const dynamic = "force-dynamic"
@@ -70,6 +70,16 @@ function serializeCreditLedgerEntry(entry: Awaited<ReturnType<typeof getRecentCr
   }
 }
 
+function serializeBillingConfirmation(event: Awaited<ReturnType<typeof getRecentWebhookConfirmations>>[number] | null) {
+  return event ? {
+    type: event.eventType,
+    status: event.status,
+    occurredAt: event.occurredAt?.toISOString() ?? null,
+    processedAt: event.processedAt?.toISOString() ?? null,
+    createdAt: event.createdAt.toISOString(),
+  } : null
+}
+
 async function getLatestSubscription(projectId: string, organizationId: string) {
   return getPrisma().paddleSubscription.findFirst({
     where: {
@@ -116,6 +126,44 @@ async function getRecentCreditLedgerEntries(projectId: string, organizationId: s
   })
 }
 
+function getBillingResourceIds({
+  customers,
+  subscription,
+  transactions,
+}: {
+  customers: { paddleCustomerId: string }[]
+  subscription: Awaited<ReturnType<typeof getLatestSubscription>> | null
+  transactions: Awaited<ReturnType<typeof getRecentTransactions>>
+}) {
+  return Array.from(new Set([
+    ...customers.map((customer) => customer.paddleCustomerId),
+    subscription?.paddleSubscriptionId,
+    subscription?.paddleCustomerId,
+    ...transactions.flatMap((transaction) => [
+      transaction.paddleTransactionId,
+      transaction.paddleSubscriptionId,
+      transaction.paddleCustomerId,
+    ]),
+  ].filter((value): value is string => Boolean(value))))
+}
+
+async function getRecentWebhookConfirmations(resourceIds: string[]) {
+  if (resourceIds.length === 0) return []
+
+  return getPrisma().paddleWebhookEvent.findMany({
+    where: { resourceId: { in: resourceIds } },
+    orderBy: { createdAt: "desc" },
+    take: 10,
+    select: {
+      eventType: true,
+      status: true,
+      occurredAt: true,
+      processedAt: true,
+      createdAt: true,
+    },
+  })
+}
+
 /** Returns secret-safe mirrored Paddle subscription and transaction state. */
 export async function GET(request: Request) {
   const { error, userId } = await getApiUserId()
@@ -142,19 +190,50 @@ export async function GET(request: Request) {
       where: { organizationId: project.organizationId },
       orderBy: { updatedAt: "desc" },
       take: 3,
-      select: { id: true, email: true, updatedAt: true },
+      select: { id: true, paddleCustomerId: true, email: true, updatedAt: true },
     }),
     getRecentCreditLedgerEntries(project.id, project.organizationId),
   ])
   const paddleSubscriptions = latestSubscription ? [latestSubscription] : []
   const entitlement = await getProjectBillingEntitlement(project.id, prisma)
+  const checkoutConfigured = Boolean(process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN)
+  const webhookConfigured = hasPaddleWebhookSecret()
+  const serverConfigured = hasPaddleServerConfig()
+  const billingResourceIds = getBillingResourceIds({
+    customers: paddleCustomers,
+    subscription: latestSubscription,
+    transactions: paddleTransactions,
+  })
+  const billingConfirmations = await getRecentWebhookConfirmations(billingResourceIds)
+  const latestConfirmation = billingConfirmations[0] ?? null
+  const failedConfirmations = billingConfirmations.filter((event) => event.status === "FAILED").length
+  const syncSummary = buildBillingSyncHealthSummary({
+    checkoutConfigured,
+    webhookConfigured,
+    serverConfigured,
+    lastConfirmationAt: latestConfirmation?.processedAt ?? latestConfirmation?.occurredAt ?? latestConfirmation?.createdAt ?? null,
+    lastConfirmationType: latestConfirmation?.eventType ?? null,
+    lastConfirmationStatus: latestConfirmation?.status ?? null,
+    failedConfirmations,
+  })
 
   return NextResponse.json({
     billing: {
       environment: getPaddleServerEnvironment(),
-      checkoutConfigured: Boolean(process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN),
-      webhookConfigured: Boolean(process.env.PADDLE_NOTIFICATION_WEBHOOK_SECRET),
-      serverConfigured: hasPaddleServerConfig(),
+      checkoutConfigured,
+      webhookConfigured,
+      serverConfigured,
+      sync: {
+        checkoutConfigured,
+        webhookConfigured,
+        serverConfigured,
+        status: syncSummary.status,
+        label: syncSummary.label,
+        message: syncSummary.message,
+        requiresAttention: syncSummary.requiresAttention,
+        lastConfirmation: serializeBillingConfirmation(latestConfirmation),
+        failedConfirmations,
+      },
       subscription: serializeSubscription(paddleSubscriptions[0] ?? null),
       customer: {
         hasCustomer: paddleCustomers.length > 0,

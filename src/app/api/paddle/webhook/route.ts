@@ -4,22 +4,18 @@
 
 import { NextRequest, NextResponse } from "next/server"
 
-import { getPaddleInstance } from "@/lib/paddle-server"
+import { getPaddleInstance, getPaddleWebhookSecret } from "@/lib/paddle-server"
 import { processPaddleWebhookEvent } from "@/lib/paddle-webhook"
 import { sanitizePaddleFailure } from "@/lib/paddle-billing.mjs"
 import { logServerError } from "@/lib/server-logging"
 
 export const dynamic = "force-dynamic"
 
-function getWebhookSecret() {
-  return process.env.PADDLE_NOTIFICATION_WEBHOOK_SECRET ?? process.env.PADDLE_SANDBOX_NOTIFICATION_WEBHOOK_SECRET ?? process.env.PADDLE_LIVE_NOTIFICATION_WEBHOOK_SECRET
-}
-
 /** Receives verified Paddle webhook notifications and mirrors safe billing state. */
 export async function POST(request: NextRequest) {
   const signature = request.headers.get("paddle-signature")
   const rawBody = await request.text()
-  const secret = getWebhookSecret()
+  const secret = getPaddleWebhookSecret()
 
   if (!signature || !rawBody) {
     return NextResponse.json({ error: "Missing Paddle webhook signature or body." }, { status: 400 })

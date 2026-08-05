@@ -53,6 +53,8 @@ Use this checklist for production validation on `https://meridian.hrudainirmal.i
 - Confirm completed Paddle checkout says Meridian is waiting for the verified Paddle webhook.
 - Confirm failed payment and modal dismiss states show clear non-secret messages.
 - Click `Refresh status` after the webhook arrives and confirm Subscription management shows the mirrored plan/customer state and Billing history shows the transaction.
+- Confirm Subscription management shows `Billing sync health`, including checkout readiness, signed confirmation readiness, account portal readiness, latest signed confirmation timestamp/type/status, and failed confirmation count.
+- Temporarily test a missing/invalid notification-secret setup in a safe environment and confirm `Billing sync health` shows a setup warning without exposing provider secrets, webhook URLs, raw provider payloads, payment credentials, or env values.
 - Click `Download invoice` for a billed/completed transaction and confirm the PDF download opens only for a user with access to the current project.
 - As an owner/admin, click `Manage subscription` and confirm the billing portal opens. Confirm viewers cannot mint a portal session.
 - Confirm Billing shows entitlement source, current period, usage rows, credits used, `Credits remaining`, and recent credit ledger entries.

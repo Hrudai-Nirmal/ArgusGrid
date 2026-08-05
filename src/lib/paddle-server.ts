@@ -22,6 +22,20 @@ export function hasPaddleServerConfig() {
   return Boolean(getPaddleApiKey())
 }
 
+/**
+ * Returns whether a webhook signing secret is configured without exposing it.
+ */
+export function hasPaddleWebhookSecret() {
+  return Boolean(getPaddleWebhookSecret())
+}
+
+/**
+ * Returns the server-only Paddle webhook signing secret.
+ */
+export function getPaddleWebhookSecret() {
+  return process.env.PADDLE_NOTIFICATION_WEBHOOK_SECRET ?? process.env.PADDLE_SANDBOX_NOTIFICATION_WEBHOOK_SECRET ?? process.env.PADDLE_LIVE_NOTIFICATION_WEBHOOK_SECRET
+}
+
 function getPaddleApiKey() {
   const environment = getPaddleServerEnvironment()
   return process.env.PADDLE_API_KEY ?? (environment === "production" ? process.env.PADDLE_LIVE_API_KEY : process.env.PADDLE_SANDBOX_API_KEY)
