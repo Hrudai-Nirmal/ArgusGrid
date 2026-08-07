@@ -115,7 +115,6 @@ test("homepage uses subtle BorderGlow for content cards and full BorderGlow for 
   const landing = await readFile("src/components/marketing/landing-page.tsx", "utf8")
   const borderGlow = await readFile("src/components/marketing/border-glow.tsx", "utf8")
   const borderGlowCss = await readFile("src/components/marketing/border-glow.css", "utf8")
-  const landingCss = await readFile("src/components/marketing/landing-page.css", "utf8")
 
   assert.match(landing, /BorderGlow/)
   assert.match(landing, /glowColor="40 80 80"/)
@@ -133,14 +132,12 @@ test("homepage uses subtle BorderGlow for content cards and full BorderGlow for 
   assert.doesNotMatch(landing, /<GlowFrame key=\{card\.title\}/)
   assert.doesNotMatch(landing, /<GlowFrame key=\{item\.title\}/)
   assert.doesNotMatch(landing, /<GlowFrame radius=\{32\} fillOpacity=\{subtleGlowFillOpacity\}>\s*<div className=\{cn\("rounded-\[2rem\]/)
-  assert.match(landing, /hero-shine-card/)
-  assert.match(landingCss, /\.hero-shine-card::before/)
-  assert.match(landingCss, /animation:\s*hero-card-border-shine 7s linear infinite/)
+  assert.doesNotMatch(landing, /hero-shine-card/)
   assert.doesNotMatch(landing, /SpecularButton/)
   assert.doesNotMatch(landing, /autoAnimate=\{plan\.id === "agency_beta"\}/)
 })
 
-test("homepage headings use lilac tone and hero title uses scroll-triggered stroke text", async () => {
+test("homepage limits lilac tone to section headings and the hero Meridian wordmark", async () => {
   const landing = await readFile("src/components/marketing/landing-page.tsx", "utf8")
   const strokeText = await readFile("src/components/marketing/stroke-text.tsx", "utf8")
   const strokeTextCss = await readFile("src/components/marketing/stroke-text.css", "utf8")
@@ -151,7 +148,11 @@ test("homepage headings use lilac tone and hero title uses scroll-triggered stro
   assert.match(landing, /trigger="scroll"/)
   assert.match(landing, /strokeColor="#C4B5FD"/)
   assert.match(landing, /fillColor="#D8B4FE"/)
+  assert.match(landing, /fontSize=\{190\}/)
   assert.doesNotMatch(landing, /<h1[^>]*>\s*Meridian\s*<\/h1>/)
+  assert.doesNotMatch(landing, /CardTitle className=\{headingClass\}/)
+  assert.doesNotMatch(landing, /<span className=\{headingClass\}>/)
+  assert.doesNotMatch(landing, /<div className=\{cn\("font-semibold", headingClass\)\}>/)
   assert.match(strokeText, /"use client"/)
   assert.match(strokeText, /IntersectionObserver/)
   assert.match(strokeText, /stroke-text--animate/)
@@ -174,9 +175,9 @@ test("homepage hero and section layout use larger brand type with golden-ratio c
   const landing = await readFile("src/components/marketing/landing-page.tsx", "utf8")
 
   assert.match(landing, /lg:grid-cols-\[0\.618fr_1fr\]/)
-  assert.match(landing, /text-6xl/)
-  assert.match(landing, /md:text-8xl/)
-  assert.match(landing, /xl:text-\[9rem\]/)
+  assert.match(landing, /text-7xl/)
+  assert.match(landing, /md:text-9xl/)
+  assert.match(landing, /xl:text-\[11rem\]/)
   assert.match(landing, /items-center/)
 })
 

@@ -186,7 +186,7 @@ export function LandingPage() {
               AI automation control room for agencies and operators
             </Badge>
             <div className="grid gap-5">
-              <h1 className="max-w-3xl text-6xl leading-[0.86] tracking-tight md:text-8xl xl:text-[9rem]">
+              <h1 className="max-w-4xl text-7xl leading-[0.82] tracking-tight md:text-9xl xl:text-[11rem]">
                 <StrokeText
                   text="Meridian"
                   trigger="scroll"
@@ -195,9 +195,9 @@ export function LandingPage() {
                   strokeWidth={1.4}
                   drawDuration={1.6}
                   fillDelay={0.2}
-                  fontSize={150}
+                  fontSize={190}
                   fontWeight={800}
-                  letterSpacing={-5}
+                  letterSpacing={-7}
                 />
               </h1>
               <p className="max-w-2xl text-xl leading-8 text-muted-foreground">
@@ -219,8 +219,8 @@ export function LandingPage() {
                 ["Client proof", "Reports, CSV exports, periods, comparisons, and print-ready links."],
                 ["Ops evidence", "Runs, alerts, logs, delivery status, billing history, and usage."],
               ].map(([title, body]) => (
-                <div key={title} className={cn("hero-shine-card h-full rounded-2xl p-4", liquidGlassCard)}>
-                  <div className={cn("font-semibold", headingClass)}>{title}</div>
+                <div key={title} className={cn("h-full rounded-2xl p-4", liquidGlassCard)}>
+                  <div className="font-semibold text-card-foreground">{title}</div>
                   <div className="mt-1">{body}</div>
                 </div>
               ))}
@@ -254,7 +254,7 @@ export function LandingPage() {
                     <div className="flex size-10 items-center justify-center rounded-xl border border-border bg-secondary text-secondary-foreground">
                       <Icon className="size-5" />
                     </div>
-                    <CardTitle className={headingClass}>{card.title}</CardTitle>
+                    <CardTitle>{card.title}</CardTitle>
                   </CardHeader>
                   <CardContent className="text-sm leading-6 text-muted-foreground">{card.body}</CardContent>
                 </Card>
@@ -294,7 +294,7 @@ export function LandingPage() {
                 <div key={item.title} className={cn("grid h-full gap-2 rounded-2xl p-4 text-sm", liquidGlassCard)}>
                   <div className="flex items-center gap-3 font-medium text-card-foreground">
                     <Icon className="size-5 text-primary" />
-                    <span className={headingClass}>{item.title}</span>
+                    <span>{item.title}</span>
                   </div>
                   <p className="leading-6 text-muted-foreground">{item.body}</p>
                 </div>
@@ -319,7 +319,7 @@ export function LandingPage() {
             <GlowFrame key={plan.id} className="h-full">
               <Card className={cn("h-full", liquidGlassCard)}>
                 <CardHeader>
-                  <CardTitle className={headingClass}>{plan.name}</CardTitle>
+                  <CardTitle>{plan.name}</CardTitle>
                   <CardDescription className="text-muted-foreground">{plan.summary}</CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-4">
@@ -391,12 +391,12 @@ function HeroGlassPanel() {
             ["REST Metric", "1.8s avg latency", "Fresh"],
             ["Client Proof", "30d report ready", "Shared"],
           ].map(([title, metric, status]) => (
-              <div key={title} className="rounded-2xl border border-border bg-card/85 p-4 backdrop-blur-xl">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className={cn("font-semibold", headingClass)}>{title}</div>
-                    <div className="mt-1 text-sm text-muted-foreground">{metric}</div>
-                  </div>
+            <div key={title} className="rounded-2xl border border-border bg-card/85 p-4 backdrop-blur-xl">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="font-semibold text-card-foreground">{title}</div>
+                  <div className="mt-1 text-sm text-muted-foreground">{metric}</div>
+                </div>
                 <Badge className={badgeClass} variant="outline">
                   {status}
                 </Badge>
