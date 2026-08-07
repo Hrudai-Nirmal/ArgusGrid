@@ -100,19 +100,36 @@ test("homepage header is a centered fixed rounded bar", async () => {
   assert.doesNotMatch(landing, /<header className="sticky top-0|border-b border-white/)
 })
 
-test("private beta pricing cards use BorderGlow wrappers instead of animated CTA buttons", async () => {
+test("homepage limits BorderGlow to login and billing plan cards", async () => {
   const landing = await readFile("src/components/marketing/landing-page.tsx", "utf8")
   const borderGlow = await readFile("src/components/marketing/border-glow.tsx", "utf8")
   const borderGlowCss = await readFile("src/components/marketing/border-glow.css", "utf8")
 
   assert.match(landing, /BorderGlow/)
   assert.match(landing, /glowColor="40 80 80"/)
-  assert.match(landing, /Choose \{plan\.name\}/)
+  assert.match(landing, /<GlowFrame key=\{plan\.id\}/)
+  assert.match(landing, /<GlowFrame>\s*<AuthEntryPanel title="Start Meridian" description="" footerCopy="" \/>/)
   assert.match(borderGlow, /"use client"/)
   assert.match(borderGlow, /onPointerMove/)
   assert.match(borderGlowCss, /\.border-glow-card/)
+  assert.doesNotMatch(landing, /<GlowFrame key=\{title\}/)
+  assert.doesNotMatch(landing, /<GlowFrame key=\{card\.title\}/)
+  assert.doesNotMatch(landing, /<GlowFrame key=\{item\.title\}/)
+  assert.doesNotMatch(landing, /<GlowFrame radius=\{32\}>\s*<InteractiveAutomationMap \/>/)
+  assert.doesNotMatch(landing, /<GlowFrame radius=\{32\}>\s*<IntegrationBeamDemo \/>/)
+  assert.doesNotMatch(landing, /<GlowFrame radius=\{32\}>\s*<div className=\{cn\("rounded-\[2rem\]/)
   assert.doesNotMatch(landing, /SpecularButton/)
   assert.doesNotMatch(landing, /autoAnimate=\{plan\.id === "agency_beta"\}/)
+})
+
+test("billing plan choice buttons have a visible hover state inside glowing cards", async () => {
+  const landing = await readFile("src/components/marketing/landing-page.tsx", "utf8")
+
+  assert.match(landing, /Choose \{plan\.name\}/)
+  assert.match(landing, /hover:border-primary/)
+  assert.match(landing, /hover:bg-primary/)
+  assert.match(landing, /hover:text-primary-foreground/)
+  assert.match(landing, /hover:shadow-\[0_0_28px_color-mix\(in_oklch,var\(--primary\),transparent_45%\)\]/)
 })
 
 test("homepage hero and section layout use larger brand type with golden-ratio columns", async () => {

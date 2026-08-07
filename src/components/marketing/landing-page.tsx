@@ -186,12 +186,10 @@ export function LandingPage() {
                 ["Client proof", "Reports, CSV exports, periods, comparisons, and print-ready links."],
                 ["Ops evidence", "Runs, alerts, logs, delivery status, billing history, and usage."],
               ].map(([title, body]) => (
-                <GlowFrame key={title} className="h-full" radius={20}>
-                  <div className={cn("h-full rounded-2xl p-4", liquidGlassCard)}>
-                    <div className="font-semibold text-card-foreground">{title}</div>
-                    <div className="mt-1">{body}</div>
-                  </div>
-                </GlowFrame>
+                <div key={title} className={cn("h-full rounded-2xl p-4", liquidGlassCard)}>
+                  <div className="font-semibold text-card-foreground">{title}</div>
+                  <div className="mt-1">{body}</div>
+                </div>
               ))}
             </div>
           </div>
@@ -211,24 +209,20 @@ export function LandingPage() {
               Drag nodes to explore how Meridian frames automation health, run evidence, metric signals, and client proof in one connected workspace.
             </p>
           </div>
-          <GlowFrame radius={32}>
-            <InteractiveAutomationMap />
-          </GlowFrame>
+          <InteractiveAutomationMap />
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {valueCards.map((card) => {
               const Icon = card.icon
               return (
-                <GlowFrame key={card.title} className="h-full">
-                  <Card className={cn("h-full", liquidGlassCard)}>
-                    <CardHeader>
-                      <div className="flex size-10 items-center justify-center rounded-xl border border-border bg-secondary text-secondary-foreground">
-                        <Icon className="size-5" />
-                      </div>
-                      <CardTitle>{card.title}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="text-sm leading-6 text-muted-foreground">{card.body}</CardContent>
-                  </Card>
-                </GlowFrame>
+                <Card key={card.title} className={cn("h-full", liquidGlassCard)}>
+                  <CardHeader>
+                    <div className="flex size-10 items-center justify-center rounded-xl border border-border bg-secondary text-secondary-foreground">
+                      <Icon className="size-5" />
+                    </div>
+                    <CardTitle>{card.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm leading-6 text-muted-foreground">{card.body}</CardContent>
+                </Card>
               )
             })}
           </div>
@@ -245,9 +239,7 @@ export function LandingPage() {
             Dify, n8n, GitHub Actions, REST metrics, and SDK/API telemetry all become one operational evidence stream for runs, metrics, alerts, and client proof.
           </p>
         </div>
-        <GlowFrame radius={32}>
-          <IntegrationBeamDemo />
-        </GlowFrame>
+        <IntegrationBeamDemo />
       </section>
 
       <section className="relative z-10 border-y border-border py-16">
@@ -262,15 +254,13 @@ export function LandingPage() {
             {reliabilityItems.map((item) => {
               const Icon = item.icon
               return (
-                <GlowFrame key={item.title} className="h-full" radius={20}>
-                  <div className={cn("grid h-full gap-2 rounded-2xl p-4 text-sm", liquidGlassCard)}>
-                    <div className="flex items-center gap-3 font-medium text-card-foreground">
-                      <Icon className="size-5 text-primary" />
-                      <span>{item.title}</span>
-                    </div>
-                    <p className="leading-6 text-muted-foreground">{item.body}</p>
+                <div key={item.title} className={cn("grid h-full gap-2 rounded-2xl p-4 text-sm", liquidGlassCard)}>
+                  <div className="flex items-center gap-3 font-medium text-card-foreground">
+                    <Icon className="size-5 text-primary" />
+                    <span>{item.title}</span>
                   </div>
-                </GlowFrame>
+                  <p className="leading-6 text-muted-foreground">{item.body}</p>
+                </div>
               )
             })}
           </div>
@@ -307,7 +297,13 @@ export function LandingPage() {
                     <div>{formatLimit(plan.reportShareLimit)} client reports</div>
                     <div>{plan.retentionDays} day retention</div>
                   </div>
-                  <a className={cn(buttonVariants({ variant: "outline" }), "w-full border-border bg-secondary/80 text-secondary-foreground hover:bg-muted")} href="#start">
+                  <a
+                    className={cn(
+                      buttonVariants({ variant: "outline" }),
+                      "w-full border-border bg-secondary/80 text-secondary-foreground shadow-black/20 transition hover:border-primary hover:bg-primary hover:text-primary-foreground hover:shadow-[0_0_28px_color-mix(in_oklch,var(--primary),transparent_45%)]",
+                    )}
+                    href="#start"
+                  >
                     Choose {plan.name}
                   </a>
                 </CardContent>
@@ -341,39 +337,37 @@ export function LandingPage() {
 
 function HeroGlassPanel() {
   return (
-    <GlowFrame radius={32}>
-      <div className={cn("rounded-[2rem] p-5", liquidGlassCard)}>
-        <div className={cn("overflow-hidden rounded-[1.5rem] border", softPanel)}>
-          <div className="flex items-center justify-between px-4 py-3 text-sm text-muted-foreground shadow-[inset_0_-1px_0_var(--border)]">
-            <div className="flex items-center gap-2">
-              <Network className="size-4 text-primary" />
-              Automation Map
-            </div>
-            <Badge className={badgeClass} variant="outline">
-              Live evidence
-            </Badge>
+    <div className={cn("rounded-[2rem] p-5", liquidGlassCard)}>
+      <div className={cn("overflow-hidden rounded-[1.5rem] border", softPanel)}>
+        <div className="flex items-center justify-between px-4 py-3 text-sm text-muted-foreground shadow-[inset_0_-1px_0_var(--border)]">
+          <div className="flex items-center gap-2">
+            <Network className="size-4 text-primary" />
+            Automation Map
           </div>
-          <div className="grid gap-3 p-4">
-            {[
-              ["Support Triage", "99.2% success", "Healthy"],
-              ["REST Metric", "1.8s avg latency", "Fresh"],
-              ["Client Proof", "30d report ready", "Shared"],
-            ].map(([title, metric, status]) => (
-              <div key={title} className="rounded-2xl border border-border bg-card/85 p-4 backdrop-blur-xl">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="font-semibold text-card-foreground">{title}</div>
-                    <div className="mt-1 text-sm text-muted-foreground">{metric}</div>
-                  </div>
-                  <Badge className={badgeClass} variant="outline">
-                    {status}
-                  </Badge>
+          <Badge className={badgeClass} variant="outline">
+            Live evidence
+          </Badge>
+        </div>
+        <div className="grid gap-3 p-4">
+          {[
+            ["Support Triage", "99.2% success", "Healthy"],
+            ["REST Metric", "1.8s avg latency", "Fresh"],
+            ["Client Proof", "30d report ready", "Shared"],
+          ].map(([title, metric, status]) => (
+            <div key={title} className="rounded-2xl border border-border bg-card/85 p-4 backdrop-blur-xl">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="font-semibold text-card-foreground">{title}</div>
+                  <div className="mt-1 text-sm text-muted-foreground">{metric}</div>
                 </div>
+                <Badge className={badgeClass} variant="outline">
+                  {status}
+                </Badge>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
       </div>
-    </GlowFrame>
+    </div>
   )
 }
