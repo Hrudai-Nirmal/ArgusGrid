@@ -22,16 +22,17 @@ test("signed-out homepage contains the required Meridian product sections", asyn
   assert.match(landing, /GitHub Actions/)
   assert.match(landing, /REST metrics/)
   assert.match(landing, /SDK/)
-  assert.match(landing, /RBAC/)
-  assert.match(landing, /secret-safe logs/)
-  assert.match(landing, /signed webhooks/)
+  assert.match(landing, /Reliability/)
+  assert.match(landing, /readiness checks/)
+  assert.match(landing, /manual recovery/)
   assert.match(landing, /durable notifications/)
-  assert.match(landing, /billing safety/)
+  assert.match(landing, /bounded evidence/)
   assert.match(landing, /Free Sandbox/)
   assert.match(landing, /Solo Beta/)
   assert.match(landing, /Agency Beta/)
   assert.match(landing, /Enterprise Pilot/)
   assert.match(landing, /AuthEntryPanel/)
+  assert.doesNotMatch(landing, /Security and reliability|Built for evidence, not secret sprawl|ShieldCheck|LockKeyhole/)
   assert.doesNotMatch(landing, /PADDLE_API_KEY|PADDLE_NOTIFICATION_WEBHOOK_SECRET|CRON_SECRET|RESEND_API_KEY|pdl_(live|sdbx)_apikey|Bearer\s+[A-Za-z0-9_-]{20,}/)
 })
 
@@ -69,19 +70,56 @@ test("public metadata describes Meridian as monitor and client ROI software", as
   assert.match(layout, /prove client ROI/)
 })
 
-test("homepage uses dark liquid glass styling with a blurred Automation Map screenshot hero", async () => {
+test("homepage uses Meridian dark theme and a DotField hero background", async () => {
   const landing = await readFile("src/components/marketing/landing-page.tsx", "utf8")
-  const screenshot = await readFile("public/meridian-automation-map-screenshot.svg", "utf8")
+  const dotField = await readFile("src/components/marketing/dot-field.tsx", "utf8")
+  const dotFieldCss = await readFile("src/components/marketing/dot-field.css", "utf8")
 
   assert.match(landing, /liquid glass/i)
-  assert.match(landing, /bg-slate-950/)
-  assert.match(landing, /meridian-automation-map-screenshot\.svg/)
-  assert.match(landing, /blur-\[/)
+  assert.match(landing, /className="dark min-h-screen overflow-hidden bg-background text-foreground"/)
+  assert.match(landing, /DotField/)
+  assert.match(landing, /gradientFrom="#A855F7"/)
+  assert.match(landing, /gradientTo="#B497CF"/)
+  assert.match(landing, /glowColor="#120F17"/)
+  assert.doesNotMatch(landing, /next\/image|meridian-automation-map-screenshot\.svg|blur-\[/)
+  assert.doesNotMatch(landing, /bg-slate-|text-slate-|border-white|bg-white|text-white|cyan-|emerald-|indigo-/)
   assert.match(landing, /InteractiveAutomationMap/)
   assert.match(landing, /IntegrationBeamDemo/)
-  assert.match(screenshot, /Meridian Automation Map/)
-  assert.match(screenshot, /Support Triage/)
-  assert.match(screenshot, /Client Proof/)
+  assert.match(dotField, /"use client"/)
+  assert.match(dotField, /requestAnimationFrame/)
+  assert.match(dotField, /ResizeObserver/)
+  assert.match(dotFieldCss, /\.dot-field-container/)
+})
+
+test("homepage header is a centered fixed rounded bar", async () => {
+  const landing = await readFile("src/components/marketing/landing-page.tsx", "utf8")
+
+  assert.match(landing, /<header className="fixed left-1\/2 top-4 z-40/)
+  assert.match(landing, /-translate-x-1\/2/)
+  assert.match(landing, /rounded-full/)
+  assert.doesNotMatch(landing, /<header className="sticky top-0|border-b border-white/)
+})
+
+test("private beta pricing cards use the SpecularButton component", async () => {
+  const landing = await readFile("src/components/marketing/landing-page.tsx", "utf8")
+  const specularButton = await readFile("src/components/marketing/specular-button.tsx", "utf8")
+  const specularCss = await readFile("src/components/marketing/specular-button.css", "utf8")
+
+  assert.match(landing, /SpecularButton/)
+  assert.match(landing, /Choose \{plan\.name\}/)
+  assert.match(specularButton, /"use client"/)
+  assert.match(specularButton, /from "ogl"/)
+  assert.match(specularButton, /followMouse/)
+  assert.match(specularCss, /\.specular-button/)
+})
+
+test("homepage browser-only visuals avoid hydration-unstable ids and shader CSS vars", async () => {
+  const landing = await readFile("src/components/marketing/landing-page.tsx", "utf8")
+  const dotField = await readFile("src/components/marketing/dot-field.tsx", "utf8")
+
+  assert.match(dotField, /useId/)
+  assert.doesNotMatch(dotField, /Math\.random/)
+  assert.doesNotMatch(landing, /lineColor="var\(|baseColor="var\(/)
 })
 
 test("interactive homepage map uses the Meridian React Flow graph without dashboard persistence", async () => {

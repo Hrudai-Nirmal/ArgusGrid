@@ -2,12 +2,13 @@
  * Signed-out Meridian homepage with dark liquid glass styling.
  */
 
-import Image from "next/image"
-import { Activity, ArrowRight, BarChart3, BellRing, FileCheck2, LockKeyhole, Network, ShieldCheck } from "lucide-react"
+import { Activity, ArrowRight, BarChart3, BellRing, FileCheck2, Gauge, Network, RefreshCw, TimerReset } from "lucide-react"
 
 import { AuthEntryPanel } from "@/components/auth/auth-entry-panel"
+import DotField from "@/components/marketing/dot-field"
 import { IntegrationBeamDemo } from "@/components/marketing/integration-beam-demo"
 import { InteractiveAutomationMap } from "@/components/marketing/interactive-automation-map"
+import SpecularButton from "@/components/marketing/specular-button"
 import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -37,16 +38,33 @@ const valueCards = [
   },
 ]
 
-const trustItems = [
-  "RBAC",
-  "secret-safe logs",
-  "signed webhooks",
-  "durable notifications",
-  "billing safety",
+const reliabilityItems = [
+  {
+    title: "readiness checks",
+    body: "Health, schema, auth, billing sync, and runtime posture are surfaced before a pilot depends on them.",
+    icon: Gauge,
+  },
+  {
+    title: "durable notifications",
+    body: "Alert delivery uses queued jobs, delivery evidence, retries, and operator-visible terminal states.",
+    icon: BellRing,
+  },
+  {
+    title: "manual recovery",
+    body: "Operators can recover queued jobs, clean retention, and poll projects on demand without always-on idle usage.",
+    icon: RefreshCw,
+  },
+  {
+    title: "bounded evidence",
+    body: "Exports, logs, telemetry, and report payloads are capped so private-beta projects stay predictable.",
+    icon: TimerReset,
+  },
 ]
 
 const pricingPreviewNames = ["Free Sandbox", "Solo Beta", "Agency Beta", "Enterprise Pilot"]
-const liquidGlassCard = "border-white/15 bg-white/[0.075] shadow-2xl shadow-black/30 backdrop-blur-2xl"
+const liquidGlassCard = "border-border bg-card/90 text-card-foreground shadow-2xl shadow-black/30 backdrop-blur-2xl"
+const softPanel = "border-border bg-secondary/50 text-secondary-foreground backdrop-blur-2xl"
+const badgeClass = "w-fit border-border bg-secondary text-secondary-foreground"
 
 function formatLimit(value: number | null) {
   return value === null ? "Custom" : value.toLocaleString("en-US")
@@ -57,78 +75,97 @@ function formatLimit(value: number | null) {
  */
 export function LandingPage() {
   return (
-    <main className="dark min-h-screen overflow-hidden bg-slate-950 text-white">
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_15%_15%,rgba(99,102,241,0.24),transparent_28%),radial-gradient(circle_at_80%_10%,rgba(45,212,191,0.14),transparent_22%),linear-gradient(180deg,#020617_0%,#0f172a_46%,#020617_100%)]" />
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-slate-950/55 backdrop-blur-2xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4">
-          <a href="#top" className="flex items-center gap-2 font-semibold">
-            <span className="flex size-9 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white shadow-lg shadow-cyan-950/30 backdrop-blur-xl">
+    <main className="dark min-h-screen overflow-hidden bg-background text-foreground">
+      <div
+        className="pointer-events-none fixed inset-0"
+        style={{
+          background:
+            "radial-gradient(circle at 18% 12%, color-mix(in oklch, var(--primary), transparent 84%), transparent 30%), radial-gradient(circle at 86% 18%, color-mix(in oklch, var(--muted-foreground), transparent 90%), transparent 26%), linear-gradient(180deg, var(--background), color-mix(in oklch, var(--background), var(--card) 26%) 48%, var(--background))",
+        }}
+      />
+      <header className="fixed left-1/2 top-4 z-40 w-[min(calc(100%-1rem),66rem)] -translate-x-1/2 rounded-full border border-border bg-card/90 px-3 py-2 shadow-2xl shadow-black/30 backdrop-blur-2xl">
+        <div className="flex items-center justify-between gap-3">
+          <a href="#top" className="flex items-center gap-2 rounded-full px-2 py-1 font-semibold text-foreground">
+            <span className="flex size-9 items-center justify-center rounded-full border border-border bg-secondary text-secondary-foreground shadow-lg shadow-black/20">
               <Network className="size-5" />
             </span>
             Meridian
           </a>
-          <nav className="hidden items-center gap-5 text-sm text-slate-300 md:flex">
-            <a className="transition hover:text-white" href="#product">
+          <nav className="hidden items-center gap-5 text-sm text-muted-foreground md:flex">
+            <a className="transition hover:text-foreground" href="#product">
               Product
             </a>
-            <a className="transition hover:text-white" href="#integrations">
+            <a className="transition hover:text-foreground" href="#integrations">
               Integrations
             </a>
-            <a className="transition hover:text-white" href="#pricing">
+            <a className="transition hover:text-foreground" href="#pricing">
               Pricing
             </a>
-            <a className="transition hover:text-white" href="#start">
+            <a className="transition hover:text-foreground" href="#start">
               Sign in
             </a>
           </nav>
-          <a className={cn(buttonVariants(), "border border-white/20 bg-white text-slate-950 hover:bg-cyan-50")} href="#start">
-            Start private beta
+          <a className={cn(buttonVariants(), "rounded-full border border-border bg-primary text-primary-foreground hover:bg-primary/90")} href="#start">
+            Start beta
             <ArrowRight data-icon="inline-end" />
           </a>
         </div>
       </header>
 
-      <section id="top" className="relative z-10 min-h-[calc(100vh-73px)] overflow-hidden">
-        <Image
-          src="/meridian-automation-map-screenshot.svg"
-          alt="Blurred screenshot of the Meridian Automation Map"
-          fill
-          priority
-          unoptimized
-          sizes="100vw"
-          className="object-cover opacity-30 blur-[5px] scale-105"
+      <section id="top" className="relative z-10 min-h-screen overflow-hidden pt-24">
+        <div className="absolute inset-0">
+          <DotField
+            dotRadius={1.5}
+            dotSpacing={14}
+            bulgeStrength={67}
+            glowRadius={160}
+            sparkle={false}
+            waveAmplitude={0}
+            cursorRadius={500}
+            cursorForce={0.1}
+            bulgeOnly
+            gradientFrom="#A855F7"
+            gradientTo="#B497CF"
+            glowColor="#120F17"
+          />
+        </div>
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(180deg, color-mix(in oklch, var(--background), transparent 14%), color-mix(in oklch, var(--background), transparent 34%) 42%, var(--background))",
+          }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-950/45 via-slate-950/72 to-slate-950" />
-        <div className="relative mx-auto grid min-h-[calc(100vh-73px)] max-w-7xl items-center gap-10 px-5 py-16 lg:grid-cols-[0.95fr_1.05fr]">
+        <div className="relative mx-auto grid min-h-[calc(100vh-6rem)] max-w-7xl items-center gap-10 px-5 py-16 lg:grid-cols-[0.95fr_1.05fr]">
           <div className="grid gap-7">
-            <Badge className="w-fit border-white/15 bg-white/10 text-cyan-100 backdrop-blur-xl" variant="outline">
+            <Badge className={badgeClass} variant="outline">
               AI automation control room for agencies and operators
             </Badge>
             <div className="grid gap-5">
-              <h1 className="max-w-3xl text-5xl font-semibold tracking-tight text-white md:text-7xl">
+              <h1 className="max-w-3xl text-5xl font-semibold tracking-tight text-foreground md:text-7xl">
                 Meridian
               </h1>
-              <p className="max-w-2xl text-xl leading-8 text-slate-200">
+              <p className="max-w-2xl text-xl leading-8 text-muted-foreground">
                 Monitor AI automations, catch failures, control cost and tokens, and prove client ROI from one graph-first workspace.
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
-              <a className={cn(buttonVariants({ size: "lg" }), "border border-white/20 bg-white text-slate-950 hover:bg-cyan-50")} href="#start">
+              <a className={cn(buttonVariants({ size: "lg" }), "border border-border bg-primary text-primary-foreground hover:bg-primary/90")} href="#start">
                 Sign in or register
                 <ArrowRight data-icon="inline-end" />
               </a>
-              <a className={cn(buttonVariants({ size: "lg", variant: "outline" }), "border-white/20 bg-white/10 text-white backdrop-blur-xl hover:bg-white/15")} href="#product">
+              <a className={cn(buttonVariants({ size: "lg", variant: "outline" }), "border-border bg-secondary text-secondary-foreground hover:bg-muted")} href="#product">
                 Explore the map
               </a>
             </div>
-            <div className="grid gap-3 text-sm text-slate-300 sm:grid-cols-3">
+            <div className="grid gap-3 text-sm text-muted-foreground sm:grid-cols-3">
               {[
                 ["Zero-idle defaults", "Manual refresh and polling until a pilot needs background work."],
                 ["Client proof", "Reports, CSV exports, periods, comparisons, and print-ready links."],
                 ["Ops evidence", "Runs, alerts, logs, delivery status, billing history, and usage."],
               ].map(([title, body]) => (
                 <div key={title} className={cn("rounded-2xl p-4", liquidGlassCard)}>
-                  <div className="font-semibold text-white">{title}</div>
+                  <div className="font-semibold text-card-foreground">{title}</div>
                   <div className="mt-1">{body}</div>
                 </div>
               ))}
@@ -139,12 +176,14 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section id="product" className="relative z-10 border-y border-white/10 py-20">
+      <section id="product" className="relative z-10 border-y border-border py-20">
         <div className="mx-auto grid max-w-7xl gap-10 px-5">
           <div className="grid max-w-3xl gap-3">
-            <Badge className="w-fit border-white/15 bg-white/10 text-cyan-100 backdrop-blur-xl" variant="outline">Automation Map first</Badge>
-            <h2 className="text-3xl font-semibold tracking-tight text-white md:text-5xl">A graph-first map for the workflows clients depend on.</h2>
-            <p className="text-lg leading-8 text-slate-300">
+            <Badge className={badgeClass} variant="outline">
+              Automation Map first
+            </Badge>
+            <h2 className="text-3xl font-semibold tracking-tight text-foreground md:text-5xl">A graph-first map for the workflows clients depend on.</h2>
+            <p className="text-lg leading-8 text-muted-foreground">
               Drag nodes to explore how Meridian frames automation health, run evidence, metric signals, and client proof in one connected workspace.
             </p>
           </div>
@@ -153,14 +192,14 @@ export function LandingPage() {
             {valueCards.map((card) => {
               const Icon = card.icon
               return (
-                <Card key={card.title} className={cn("text-white", liquidGlassCard)}>
+                <Card key={card.title} className={liquidGlassCard}>
                   <CardHeader>
-                    <div className="flex size-10 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-cyan-100">
+                    <div className="flex size-10 items-center justify-center rounded-xl border border-border bg-secondary text-secondary-foreground">
                       <Icon className="size-5" />
                     </div>
                     <CardTitle>{card.title}</CardTitle>
                   </CardHeader>
-                  <CardContent className="text-sm leading-6 text-slate-300">{card.body}</CardContent>
+                  <CardContent className="text-sm leading-6 text-muted-foreground">{card.body}</CardContent>
                 </Card>
               )
             })}
@@ -170,78 +209,107 @@ export function LandingPage() {
 
       <section id="integrations" className="relative z-10 mx-auto grid max-w-7xl gap-8 px-5 py-20">
         <div className="grid max-w-3xl gap-3">
-          <Badge className="w-fit border-white/15 bg-white/10 text-cyan-100 backdrop-blur-xl" variant="outline">Integration paths</Badge>
-          <h2 className="text-3xl font-semibold tracking-tight text-white md:text-5xl">Watch data flow into Meridian.</h2>
-          <p className="text-lg leading-8 text-slate-300">
+          <Badge className={badgeClass} variant="outline">
+            Integration paths
+          </Badge>
+          <h2 className="text-3xl font-semibold tracking-tight text-foreground md:text-5xl">Watch data flow into Meridian.</h2>
+          <p className="text-lg leading-8 text-muted-foreground">
             Dify, n8n, GitHub Actions, REST metrics, and SDK/API telemetry all become one operational evidence stream for runs, metrics, alerts, and client proof.
           </p>
         </div>
         <IntegrationBeamDemo />
       </section>
 
-      <section className="relative z-10 border-y border-white/10 py-16">
+      <section className="relative z-10 border-y border-border py-16">
         <div className="mx-auto grid max-w-7xl gap-8 px-5 lg:grid-cols-[0.8fr_1.2fr]">
           <div>
-            <Badge className="border-white/15 bg-white/10 text-cyan-100 backdrop-blur-xl" variant="outline">Security and reliability</Badge>
-            <h2 className="mt-4 text-3xl font-semibold tracking-tight text-white md:text-5xl">Built for evidence, not secret sprawl.</h2>
+            <Badge className={badgeClass} variant="outline">
+              Reliability
+            </Badge>
+            <h2 className="mt-4 text-3xl font-semibold tracking-tight text-foreground md:text-5xl">Designed to keep automation evidence dependable.</h2>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            {trustItems.map((item) => (
-              <div key={item} className={cn("flex items-center gap-3 rounded-2xl p-4 text-sm text-slate-200", liquidGlassCard)}>
-                <ShieldCheck className="size-5 text-emerald-300" />
-                <span>{item}</span>
-              </div>
-            ))}
-            <div className={cn("flex items-center gap-3 rounded-2xl p-4 text-sm text-slate-200", liquidGlassCard)}>
-              <LockKeyhole className="size-5 text-indigo-200" />
-              Signed-out reports stay read-only and token-scoped.
-            </div>
+            {reliabilityItems.map((item) => {
+              const Icon = item.icon
+              return (
+                <div key={item.title} className={cn("grid gap-2 rounded-2xl p-4 text-sm", liquidGlassCard)}>
+                  <div className="flex items-center gap-3 font-medium text-card-foreground">
+                    <Icon className="size-5 text-primary" />
+                    <span>{item.title}</span>
+                  </div>
+                  <p className="leading-6 text-muted-foreground">{item.body}</p>
+                </div>
+              )
+            })}
           </div>
         </div>
       </section>
 
       <section id="pricing" className="relative z-10 mx-auto grid max-w-7xl gap-8 px-5 py-20">
         <div className="grid max-w-3xl gap-3">
-          <Badge className="w-fit border-white/15 bg-white/10 text-cyan-100 backdrop-blur-xl" variant="outline">Private beta pricing</Badge>
-          <h2 className="text-3xl font-semibold tracking-tight text-white md:text-5xl">Start conservatively, scale with credits.</h2>
-          <p className="text-lg leading-8 text-slate-300">
+          <Badge className={badgeClass} variant="outline">
+            Private beta pricing
+          </Badge>
+          <h2 className="text-3xl font-semibold tracking-tight text-foreground md:text-5xl">Start conservatively, scale with credits.</h2>
+          <p className="text-lg leading-8 text-muted-foreground">
             Plans include monthly usage, with prepaid credits available inside Billing after sign-in. Public pricing buttons lead to account creation, not checkout.
           </p>
         </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {MERIDIAN_PRICING_PLANS.filter((plan) => pricingPreviewNames.includes(plan.name)).map((plan) => (
-            <Card key={plan.id} className={cn("text-white", liquidGlassCard)}>
+            <Card key={plan.id} className={liquidGlassCard}>
               <CardHeader>
                 <CardTitle>{plan.name}</CardTitle>
-                <CardDescription className="text-slate-300">{plan.summary}</CardDescription>
+                <CardDescription className="text-muted-foreground">{plan.summary}</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4">
                 <div>
                   <span className="text-3xl font-semibold">${plan.monthlyUsd}</span>
-                  <span className="text-sm text-slate-400"> / mo</span>
-                  <div className="text-sm text-slate-400">INR {plan.monthlyInr.toLocaleString("en-IN")} / mo</div>
+                  <span className="text-sm text-muted-foreground"> / mo</span>
+                  <div className="text-sm text-muted-foreground">INR {plan.monthlyInr.toLocaleString("en-IN")} / mo</div>
                 </div>
-                <div className="grid gap-2 text-sm text-slate-300">
+                <div className="grid gap-2 text-sm text-muted-foreground">
                   <div>{formatLimit(plan.workflowRunLimit)} workflow runs</div>
                   <div>{formatLimit(plan.metricSampleLimit)} metric samples</div>
                   <div>{formatLimit(plan.reportShareLimit)} client reports</div>
                   <div>{plan.retentionDays} day retention</div>
                 </div>
-                <a className={cn(buttonVariants({ variant: plan.id === "agency_beta" ? "default" : "outline" }), "w-full border-white/20", plan.id === "agency_beta" ? "bg-white text-slate-950 hover:bg-cyan-50" : "bg-white/10 text-white hover:bg-white/15")} href="#start">
+                <SpecularButton
+                  href="#start"
+                  size="md"
+                  radius={18}
+                  tint="var(--foreground)"
+                  tintOpacity={0}
+                  blur={0}
+                  textColor="var(--foreground)"
+                  lineColor="#f5f5f5"
+                  baseColor="#525252"
+                  intensity={1}
+                  shineSize={10}
+                  shineFade={40}
+                  thickness={1}
+                  speed={0.35}
+                  followMouse
+                  proximity={250}
+                  autoAnimate={plan.id === "agency_beta"}
+                  className="w-full"
+                >
                   Choose {plan.name}
-                </a>
+                </SpecularButton>
               </CardContent>
             </Card>
           ))}
         </div>
       </section>
 
-      <section id="start" className="relative z-10 border-t border-white/10 py-20">
+      <section id="start" className="relative z-10 border-t border-border py-20">
         <div className="mx-auto grid max-w-7xl items-start gap-10 px-5 lg:grid-cols-[0.9fr_1.1fr]">
           <div className="grid gap-5">
-            <Badge className="w-fit border-white/15 bg-white/10 text-cyan-100 backdrop-blur-xl" variant="outline">Sign in / register</Badge>
-            <h2 className="text-3xl font-semibold tracking-tight text-white md:text-5xl">Open Meridian and start with the graph.</h2>
-            <p className="text-lg leading-8 text-slate-300">
+            <Badge className={badgeClass} variant="outline">
+              Sign in / register
+            </Badge>
+            <h2 className="text-3xl font-semibold tracking-tight text-foreground md:text-5xl">Open Meridian and start with the graph.</h2>
+            <p className="text-lg leading-8 text-muted-foreground">
               New accounts get guided setup for the first node, telemetry signal, run verification, and client proof report. Returning users go straight to the dashboard.
             </p>
           </div>
@@ -261,13 +329,15 @@ export function LandingPage() {
 function HeroGlassPanel() {
   return (
     <div className={cn("rounded-[2rem] p-5", liquidGlassCard)}>
-      <div className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-slate-950/70">
-        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 text-sm text-slate-300">
+      <div className={cn("overflow-hidden rounded-[1.5rem] border", softPanel)}>
+        <div className="flex items-center justify-between px-4 py-3 text-sm text-muted-foreground shadow-[inset_0_-1px_0_var(--border)]">
           <div className="flex items-center gap-2">
-            <Network className="size-4 text-cyan-200" />
+            <Network className="size-4 text-primary" />
             Automation Map
           </div>
-          <Badge className="border-emerald-300/20 bg-emerald-400/10 text-emerald-200" variant="outline">Live evidence</Badge>
+          <Badge className={badgeClass} variant="outline">
+            Live evidence
+          </Badge>
         </div>
         <div className="grid gap-3 p-4">
           {[
@@ -275,13 +345,15 @@ function HeroGlassPanel() {
             ["REST Metric", "1.8s avg latency", "Fresh"],
             ["Client Proof", "30d report ready", "Shared"],
           ].map(([title, metric, status]) => (
-            <div key={title} className="rounded-2xl border border-white/10 bg-white/[0.06] p-4">
+            <div key={title} className="rounded-2xl border border-border bg-card p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <div className="font-semibold text-white">{title}</div>
-                  <div className="mt-1 text-sm text-slate-400">{metric}</div>
+                  <div className="font-semibold text-card-foreground">{title}</div>
+                  <div className="mt-1 text-sm text-muted-foreground">{metric}</div>
                 </div>
-                <Badge className="border-cyan-200/20 bg-cyan-300/10 text-cyan-100" variant="outline">{status}</Badge>
+                <Badge className={badgeClass} variant="outline">
+                  {status}
+                </Badge>
               </div>
             </div>
           ))}
