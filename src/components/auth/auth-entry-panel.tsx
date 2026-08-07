@@ -127,7 +127,7 @@ export function AuthEntryPanel({
           <Network className="size-6" />
         </div>
         <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
+        {description ? <CardDescription>{description}</CardDescription> : null}
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <form action="/api/auth/signin/github" method="post">
@@ -199,7 +199,7 @@ export function AuthEntryPanel({
             Retry readiness
           </Button>
         ) : null}
-        <p className="text-xs leading-5 text-muted-foreground">{footerCopy}</p>
+        {footerCopy ? <p className="text-xs leading-5 text-muted-foreground">{footerCopy}</p> : null}
       </CardContent>
     </Card>
   )

@@ -100,17 +100,40 @@ test("homepage header is a centered fixed rounded bar", async () => {
   assert.doesNotMatch(landing, /<header className="sticky top-0|border-b border-white/)
 })
 
-test("private beta pricing cards use the SpecularButton component", async () => {
+test("private beta pricing cards use BorderGlow wrappers instead of animated CTA buttons", async () => {
   const landing = await readFile("src/components/marketing/landing-page.tsx", "utf8")
-  const specularButton = await readFile("src/components/marketing/specular-button.tsx", "utf8")
-  const specularCss = await readFile("src/components/marketing/specular-button.css", "utf8")
+  const borderGlow = await readFile("src/components/marketing/border-glow.tsx", "utf8")
+  const borderGlowCss = await readFile("src/components/marketing/border-glow.css", "utf8")
 
-  assert.match(landing, /SpecularButton/)
+  assert.match(landing, /BorderGlow/)
+  assert.match(landing, /glowColor="40 80 80"/)
   assert.match(landing, /Choose \{plan\.name\}/)
-  assert.match(specularButton, /"use client"/)
-  assert.match(specularButton, /from "ogl"/)
-  assert.match(specularButton, /followMouse/)
-  assert.match(specularCss, /\.specular-button/)
+  assert.match(borderGlow, /"use client"/)
+  assert.match(borderGlow, /onPointerMove/)
+  assert.match(borderGlowCss, /\.border-glow-card/)
+  assert.doesNotMatch(landing, /SpecularButton/)
+  assert.doesNotMatch(landing, /autoAnimate=\{plan\.id === "agency_beta"\}/)
+})
+
+test("homepage hero and section layout use larger brand type with golden-ratio columns", async () => {
+  const landing = await readFile("src/components/marketing/landing-page.tsx", "utf8")
+
+  assert.match(landing, /lg:grid-cols-\[0\.618fr_1fr\]/)
+  assert.match(landing, /text-6xl/)
+  assert.match(landing, /md:text-8xl/)
+  assert.match(landing, /xl:text-\[9rem\]/)
+  assert.match(landing, /items-center/)
+})
+
+test("homepage sign-in panel omits launch-only helper copy", async () => {
+  const landing = await readFile("src/components/marketing/landing-page.tsx", "utf8")
+  const panel = await readFile("src/components/auth/auth-entry-panel.tsx", "utf8")
+
+  assert.match(landing, /description=""/)
+  assert.match(landing, /footerCopy=""/)
+  assert.match(panel, /description \?/)
+  assert.match(panel, /footerCopy \?/)
+  assert.doesNotMatch(landing, /callback returns|No public page exposes|private project\/member data/)
 })
 
 test("homepage browser-only visuals avoid hydration-unstable ids and shader CSS vars", async () => {
@@ -120,6 +143,7 @@ test("homepage browser-only visuals avoid hydration-unstable ids and shader CSS 
   assert.match(dotField, /useId/)
   assert.doesNotMatch(dotField, /Math\.random/)
   assert.doesNotMatch(landing, /lineColor="var\(|baseColor="var\(/)
+  assert.doesNotMatch(landing, /SpecularButton/)
 })
 
 test("interactive homepage map uses the Meridian React Flow graph without dashboard persistence", async () => {

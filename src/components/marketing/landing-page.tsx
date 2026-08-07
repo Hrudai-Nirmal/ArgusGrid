@@ -2,13 +2,14 @@
  * Signed-out Meridian homepage with dark liquid glass styling.
  */
 
+import type { ReactNode } from "react"
 import { Activity, ArrowRight, BarChart3, BellRing, FileCheck2, Gauge, Network, RefreshCw, TimerReset } from "lucide-react"
 
 import { AuthEntryPanel } from "@/components/auth/auth-entry-panel"
+import BorderGlow from "@/components/marketing/border-glow"
 import DotField from "@/components/marketing/dot-field"
 import { IntegrationBeamDemo } from "@/components/marketing/integration-beam-demo"
 import { InteractiveAutomationMap } from "@/components/marketing/interactive-automation-map"
-import SpecularButton from "@/components/marketing/specular-button"
 import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -62,12 +63,33 @@ const reliabilityItems = [
 ]
 
 const pricingPreviewNames = ["Free Sandbox", "Solo Beta", "Agency Beta", "Enterprise Pilot"]
-const liquidGlassCard = "border-border bg-card/90 text-card-foreground shadow-2xl shadow-black/30 backdrop-blur-2xl"
-const softPanel = "border-border bg-secondary/50 text-secondary-foreground backdrop-blur-2xl"
+const glowFrameColors = ["#A855F7", "#B497CF", "#7C3AED"]
+const liquidGlassCard =
+  "border-border/70 bg-card/55 text-card-foreground shadow-2xl shadow-black/30 backdrop-blur-2xl supports-[backdrop-filter]:bg-card/45"
+const softPanel = "border-border/70 bg-secondary/45 text-secondary-foreground backdrop-blur-2xl supports-[backdrop-filter]:bg-secondary/35"
 const badgeClass = "w-fit border-border bg-secondary text-secondary-foreground"
 
 function formatLimit(value: number | null) {
   return value === null ? "Custom" : value.toLocaleString("en-US")
+}
+
+function GlowFrame({ children, className, radius = 28 }: { children: ReactNode; className?: string; radius?: number }) {
+  return (
+    <BorderGlow
+      className={className}
+      edgeSensitivity={30}
+      glowColor="40 80 80"
+      backgroundColor="color-mix(in oklch, var(--card), transparent 45%)"
+      borderRadius={radius}
+      glowRadius={40}
+      glowIntensity={1}
+      coneSpread={25}
+      animated={false}
+      colors={glowFrameColors}
+    >
+      {children}
+    </BorderGlow>
+  )
 }
 
 /**
@@ -136,13 +158,13 @@ export function LandingPage() {
               "linear-gradient(180deg, color-mix(in oklch, var(--background), transparent 14%), color-mix(in oklch, var(--background), transparent 34%) 42%, var(--background))",
           }}
         />
-        <div className="relative mx-auto grid min-h-[calc(100vh-6rem)] max-w-7xl items-center gap-10 px-5 py-16 lg:grid-cols-[0.95fr_1.05fr]">
+        <div className="relative mx-auto grid min-h-[calc(100vh-6rem)] max-w-7xl items-center gap-12 px-5 py-16 lg:grid-cols-[0.618fr_1fr]">
           <div className="grid gap-7">
             <Badge className={badgeClass} variant="outline">
               AI automation control room for agencies and operators
             </Badge>
             <div className="grid gap-5">
-              <h1 className="max-w-3xl text-5xl font-semibold tracking-tight text-foreground md:text-7xl">
+              <h1 className="max-w-3xl text-6xl font-semibold leading-[0.86] tracking-tight text-foreground md:text-8xl xl:text-[9rem]">
                 Meridian
               </h1>
               <p className="max-w-2xl text-xl leading-8 text-muted-foreground">
@@ -164,10 +186,12 @@ export function LandingPage() {
                 ["Client proof", "Reports, CSV exports, periods, comparisons, and print-ready links."],
                 ["Ops evidence", "Runs, alerts, logs, delivery status, billing history, and usage."],
               ].map(([title, body]) => (
-                <div key={title} className={cn("rounded-2xl p-4", liquidGlassCard)}>
-                  <div className="font-semibold text-card-foreground">{title}</div>
-                  <div className="mt-1">{body}</div>
-                </div>
+                <GlowFrame key={title} className="h-full" radius={20}>
+                  <div className={cn("h-full rounded-2xl p-4", liquidGlassCard)}>
+                    <div className="font-semibold text-card-foreground">{title}</div>
+                    <div className="mt-1">{body}</div>
+                  </div>
+                </GlowFrame>
               ))}
             </div>
           </div>
@@ -187,20 +211,24 @@ export function LandingPage() {
               Drag nodes to explore how Meridian frames automation health, run evidence, metric signals, and client proof in one connected workspace.
             </p>
           </div>
-          <InteractiveAutomationMap />
+          <GlowFrame radius={32}>
+            <InteractiveAutomationMap />
+          </GlowFrame>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {valueCards.map((card) => {
               const Icon = card.icon
               return (
-                <Card key={card.title} className={liquidGlassCard}>
-                  <CardHeader>
-                    <div className="flex size-10 items-center justify-center rounded-xl border border-border bg-secondary text-secondary-foreground">
-                      <Icon className="size-5" />
-                    </div>
-                    <CardTitle>{card.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-sm leading-6 text-muted-foreground">{card.body}</CardContent>
-                </Card>
+                <GlowFrame key={card.title} className="h-full">
+                  <Card className={cn("h-full", liquidGlassCard)}>
+                    <CardHeader>
+                      <div className="flex size-10 items-center justify-center rounded-xl border border-border bg-secondary text-secondary-foreground">
+                        <Icon className="size-5" />
+                      </div>
+                      <CardTitle>{card.title}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-sm leading-6 text-muted-foreground">{card.body}</CardContent>
+                  </Card>
+                </GlowFrame>
               )
             })}
           </div>
@@ -217,7 +245,9 @@ export function LandingPage() {
             Dify, n8n, GitHub Actions, REST metrics, and SDK/API telemetry all become one operational evidence stream for runs, metrics, alerts, and client proof.
           </p>
         </div>
-        <IntegrationBeamDemo />
+        <GlowFrame radius={32}>
+          <IntegrationBeamDemo />
+        </GlowFrame>
       </section>
 
       <section className="relative z-10 border-y border-border py-16">
@@ -232,13 +262,15 @@ export function LandingPage() {
             {reliabilityItems.map((item) => {
               const Icon = item.icon
               return (
-                <div key={item.title} className={cn("grid gap-2 rounded-2xl p-4 text-sm", liquidGlassCard)}>
-                  <div className="flex items-center gap-3 font-medium text-card-foreground">
-                    <Icon className="size-5 text-primary" />
-                    <span>{item.title}</span>
+                <GlowFrame key={item.title} className="h-full" radius={20}>
+                  <div className={cn("grid h-full gap-2 rounded-2xl p-4 text-sm", liquidGlassCard)}>
+                    <div className="flex items-center gap-3 font-medium text-card-foreground">
+                      <Icon className="size-5 text-primary" />
+                      <span>{item.title}</span>
+                    </div>
+                    <p className="leading-6 text-muted-foreground">{item.body}</p>
                   </div>
-                  <p className="leading-6 text-muted-foreground">{item.body}</p>
-                </div>
+                </GlowFrame>
               )
             })}
           </div>
@@ -257,53 +289,36 @@ export function LandingPage() {
         </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {MERIDIAN_PRICING_PLANS.filter((plan) => pricingPreviewNames.includes(plan.name)).map((plan) => (
-            <Card key={plan.id} className={liquidGlassCard}>
-              <CardHeader>
-                <CardTitle>{plan.name}</CardTitle>
-                <CardDescription className="text-muted-foreground">{plan.summary}</CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-4">
-                <div>
-                  <span className="text-3xl font-semibold">${plan.monthlyUsd}</span>
-                  <span className="text-sm text-muted-foreground"> / mo</span>
-                  <div className="text-sm text-muted-foreground">INR {plan.monthlyInr.toLocaleString("en-IN")} / mo</div>
-                </div>
-                <div className="grid gap-2 text-sm text-muted-foreground">
-                  <div>{formatLimit(plan.workflowRunLimit)} workflow runs</div>
-                  <div>{formatLimit(plan.metricSampleLimit)} metric samples</div>
-                  <div>{formatLimit(plan.reportShareLimit)} client reports</div>
-                  <div>{plan.retentionDays} day retention</div>
-                </div>
-                <SpecularButton
-                  href="#start"
-                  size="md"
-                  radius={18}
-                  tint="var(--foreground)"
-                  tintOpacity={0}
-                  blur={0}
-                  textColor="var(--foreground)"
-                  lineColor="#f5f5f5"
-                  baseColor="#525252"
-                  intensity={1}
-                  shineSize={10}
-                  shineFade={40}
-                  thickness={1}
-                  speed={0.35}
-                  followMouse
-                  proximity={250}
-                  autoAnimate={plan.id === "agency_beta"}
-                  className="w-full"
-                >
-                  Choose {plan.name}
-                </SpecularButton>
-              </CardContent>
-            </Card>
+            <GlowFrame key={plan.id} className="h-full">
+              <Card className={cn("h-full", liquidGlassCard)}>
+                <CardHeader>
+                  <CardTitle>{plan.name}</CardTitle>
+                  <CardDescription className="text-muted-foreground">{plan.summary}</CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-4">
+                  <div>
+                    <span className="text-3xl font-semibold">${plan.monthlyUsd}</span>
+                    <span className="text-sm text-muted-foreground"> / mo</span>
+                    <div className="text-sm text-muted-foreground">INR {plan.monthlyInr.toLocaleString("en-IN")} / mo</div>
+                  </div>
+                  <div className="grid gap-2 text-sm text-muted-foreground">
+                    <div>{formatLimit(plan.workflowRunLimit)} workflow runs</div>
+                    <div>{formatLimit(plan.metricSampleLimit)} metric samples</div>
+                    <div>{formatLimit(plan.reportShareLimit)} client reports</div>
+                    <div>{plan.retentionDays} day retention</div>
+                  </div>
+                  <a className={cn(buttonVariants({ variant: "outline" }), "w-full border-border bg-secondary/80 text-secondary-foreground hover:bg-muted")} href="#start">
+                    Choose {plan.name}
+                  </a>
+                </CardContent>
+              </Card>
+            </GlowFrame>
           ))}
         </div>
       </section>
 
       <section id="start" className="relative z-10 border-t border-border py-20">
-        <div className="mx-auto grid max-w-7xl items-start gap-10 px-5 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="mx-auto grid max-w-7xl items-start gap-10 px-5 lg:grid-cols-[0.618fr_1fr]">
           <div className="grid gap-5">
             <Badge className={badgeClass} variant="outline">
               Sign in / register
@@ -314,11 +329,9 @@ export function LandingPage() {
             </p>
           </div>
           <div className="mx-auto w-full max-w-md">
-            <AuthEntryPanel
-              title="Start Meridian"
-              description="Use GitHub, Google, or email/password. The callback returns to / so signed-in users land in the dashboard."
-              footerCopy="No public page exposes tokens, webhook URLs, Paddle keys, environment values, or private project/member data."
-            />
+            <GlowFrame>
+              <AuthEntryPanel title="Start Meridian" description="" footerCopy="" />
+            </GlowFrame>
           </div>
         </div>
       </section>
@@ -328,37 +341,39 @@ export function LandingPage() {
 
 function HeroGlassPanel() {
   return (
-    <div className={cn("rounded-[2rem] p-5", liquidGlassCard)}>
-      <div className={cn("overflow-hidden rounded-[1.5rem] border", softPanel)}>
-        <div className="flex items-center justify-between px-4 py-3 text-sm text-muted-foreground shadow-[inset_0_-1px_0_var(--border)]">
-          <div className="flex items-center gap-2">
-            <Network className="size-4 text-primary" />
-            Automation Map
-          </div>
-          <Badge className={badgeClass} variant="outline">
-            Live evidence
-          </Badge>
-        </div>
-        <div className="grid gap-3 p-4">
-          {[
-            ["Support Triage", "99.2% success", "Healthy"],
-            ["REST Metric", "1.8s avg latency", "Fresh"],
-            ["Client Proof", "30d report ready", "Shared"],
-          ].map(([title, metric, status]) => (
-            <div key={title} className="rounded-2xl border border-border bg-card p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="font-semibold text-card-foreground">{title}</div>
-                  <div className="mt-1 text-sm text-muted-foreground">{metric}</div>
-                </div>
-                <Badge className={badgeClass} variant="outline">
-                  {status}
-                </Badge>
-              </div>
+    <GlowFrame radius={32}>
+      <div className={cn("rounded-[2rem] p-5", liquidGlassCard)}>
+        <div className={cn("overflow-hidden rounded-[1.5rem] border", softPanel)}>
+          <div className="flex items-center justify-between px-4 py-3 text-sm text-muted-foreground shadow-[inset_0_-1px_0_var(--border)]">
+            <div className="flex items-center gap-2">
+              <Network className="size-4 text-primary" />
+              Automation Map
             </div>
-          ))}
+            <Badge className={badgeClass} variant="outline">
+              Live evidence
+            </Badge>
+          </div>
+          <div className="grid gap-3 p-4">
+            {[
+              ["Support Triage", "99.2% success", "Healthy"],
+              ["REST Metric", "1.8s avg latency", "Fresh"],
+              ["Client Proof", "30d report ready", "Shared"],
+            ].map(([title, metric, status]) => (
+              <div key={title} className="rounded-2xl border border-border bg-card/85 p-4 backdrop-blur-xl">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="font-semibold text-card-foreground">{title}</div>
+                    <div className="mt-1 text-sm text-muted-foreground">{metric}</div>
+                  </div>
+                  <Badge className={badgeClass} variant="outline">
+                    {status}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
+    </GlowFrame>
   )
 }
