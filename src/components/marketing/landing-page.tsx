@@ -8,7 +8,6 @@ import { Activity, ArrowRight, BarChart3, BellRing, FileCheck2, Gauge, Network, 
 import { AuthEntryPanel } from "@/components/auth/auth-entry-panel"
 import BorderGlow from "@/components/marketing/border-glow"
 import DotField from "@/components/marketing/dot-field"
-import GlassSurface from "@/components/marketing/glass-surface"
 import { IntegrationBeamDemo } from "@/components/marketing/integration-beam-demo"
 import { InteractiveAutomationMap } from "@/components/marketing/interactive-automation-map"
 import { Badge } from "@/components/ui/badge"
@@ -118,44 +117,38 @@ export function LandingPage() {
             "radial-gradient(circle at 18% 12%, color-mix(in oklch, var(--primary), transparent 84%), transparent 30%), radial-gradient(circle at 86% 18%, color-mix(in oklch, var(--muted-foreground), transparent 90%), transparent 26%), linear-gradient(180deg, var(--background), color-mix(in oklch, var(--background), var(--card) 26%) 48%, var(--background))",
         }}
       />
-      <header className="fixed left-1/2 top-4 z-40 w-[min(calc(100%-1rem),66rem)] -translate-x-1/2 rounded-full">
-        <GlassSurface
-          width="100%"
-          height="auto"
-          borderRadius={999}
-          backgroundOpacity={0.1}
-          saturation={2.1}
-          displace={0.2}
-          distortionScale={-120}
-          className="rounded-full text-foreground"
-        >
-          <div className="flex w-full items-center justify-between gap-3">
-            <a href="#top" className="flex items-center gap-2 rounded-full px-2 py-1 font-semibold text-foreground">
-              <span className="flex size-9 items-center justify-center rounded-full border border-border bg-secondary text-secondary-foreground shadow-lg shadow-black/20">
-                <Network className="size-5" />
-              </span>
-              Meridian
+      <header
+        className={cn(
+          "fixed left-1/2 top-4 z-40 w-[min(calc(100%-1rem),66rem)] -translate-x-1/2 rounded-full",
+          "border border-border/80 bg-card/90 px-2 py-2 text-foreground shadow-2xl shadow-black/30 backdrop-blur-xl",
+        )}
+      >
+        <div className="flex w-full items-center justify-between gap-3">
+          <a href="#top" className="flex items-center gap-2 rounded-full px-2 py-1 font-semibold text-foreground">
+            <span className="flex size-9 items-center justify-center rounded-full border border-border bg-secondary text-secondary-foreground shadow-lg shadow-black/20">
+              <Network className="size-5" />
+            </span>
+            Meridian
+          </a>
+          <nav className="hidden items-center gap-5 text-sm text-muted-foreground md:flex">
+            <a className="transition hover:text-foreground" href="#product">
+              Product
             </a>
-            <nav className="hidden items-center gap-5 text-sm text-muted-foreground md:flex">
-              <a className="transition hover:text-foreground" href="#product">
-                Product
-              </a>
-              <a className="transition hover:text-foreground" href="#integrations">
-                Integrations
-              </a>
-              <a className="transition hover:text-foreground" href="#pricing">
-                Pricing
-              </a>
-              <a className="transition hover:text-foreground" href="#start">
-                Sign in
-              </a>
-            </nav>
-            <a className={cn(buttonVariants(), "rounded-full border border-border bg-primary text-primary-foreground hover:bg-primary/90")} href="#start">
-              Start beta
-              <ArrowRight data-icon="inline-end" />
+            <a className="transition hover:text-foreground" href="#integrations">
+              Integrations
             </a>
-          </div>
-        </GlassSurface>
+            <a className="transition hover:text-foreground" href="#pricing">
+              Pricing
+            </a>
+            <a className="transition hover:text-foreground" href="#start">
+              Sign in
+            </a>
+          </nav>
+          <a className={cn(buttonVariants(), "rounded-full border border-border bg-primary text-primary-foreground hover:bg-primary/90")} href="#start">
+            Start beta
+            <ArrowRight data-icon="inline-end" />
+          </a>
+        </div>
       </header>
 
       <section id="top" className="relative z-10 min-h-screen overflow-hidden pt-24">
@@ -210,12 +203,10 @@ export function LandingPage() {
                 ["Client proof", "Reports, CSV exports, periods, comparisons, and print-ready links."],
                 ["Ops evidence", "Runs, alerts, logs, delivery status, billing history, and usage."],
               ].map(([title, body]) => (
-                <GlowFrame key={title} className="h-full" radius={20} fillOpacity={subtleGlowFillOpacity}>
-                  <div className={cn("h-full rounded-2xl p-4", liquidGlassCard)}>
-                    <div className="font-semibold text-card-foreground">{title}</div>
-                    <div className="mt-1">{body}</div>
-                  </div>
-                </GlowFrame>
+                <div key={title} className={cn("h-full rounded-2xl p-4", liquidGlassCard)}>
+                  <div className="font-semibold text-card-foreground">{title}</div>
+                  <div className="mt-1">{body}</div>
+                </div>
               ))}
             </div>
           </div>
@@ -242,17 +233,15 @@ export function LandingPage() {
             {valueCards.map((card) => {
               const Icon = card.icon
               return (
-                <GlowFrame key={card.title} className="h-full" fillOpacity={subtleGlowFillOpacity}>
-                  <Card className={cn("h-full", liquidGlassCard)}>
-                    <CardHeader>
-                      <div className="flex size-10 items-center justify-center rounded-xl border border-border bg-secondary text-secondary-foreground">
-                        <Icon className="size-5" />
-                      </div>
-                      <CardTitle>{card.title}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="text-sm leading-6 text-muted-foreground">{card.body}</CardContent>
-                  </Card>
-                </GlowFrame>
+                <Card key={card.title} className={cn("h-full", liquidGlassCard)}>
+                  <CardHeader>
+                    <div className="flex size-10 items-center justify-center rounded-xl border border-border bg-secondary text-secondary-foreground">
+                      <Icon className="size-5" />
+                    </div>
+                    <CardTitle>{card.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm leading-6 text-muted-foreground">{card.body}</CardContent>
+                </Card>
               )
             })}
           </div>
@@ -286,15 +275,13 @@ export function LandingPage() {
             {reliabilityItems.map((item) => {
               const Icon = item.icon
               return (
-                <GlowFrame key={item.title} className="h-full" radius={20} fillOpacity={subtleGlowFillOpacity}>
-                  <div className={cn("grid h-full gap-2 rounded-2xl p-4 text-sm", liquidGlassCard)}>
-                    <div className="flex items-center gap-3 font-medium text-card-foreground">
-                      <Icon className="size-5 text-primary" />
-                      <span>{item.title}</span>
-                    </div>
-                    <p className="leading-6 text-muted-foreground">{item.body}</p>
+                <div key={item.title} className={cn("grid h-full gap-2 rounded-2xl p-4 text-sm", liquidGlassCard)}>
+                  <div className="flex items-center gap-3 font-medium text-card-foreground">
+                    <Icon className="size-5 text-primary" />
+                    <span>{item.title}</span>
                   </div>
-                </GlowFrame>
+                  <p className="leading-6 text-muted-foreground">{item.body}</p>
+                </div>
               )
             })}
           </div>
@@ -371,39 +358,37 @@ export function LandingPage() {
 
 function HeroGlassPanel() {
   return (
-    <GlowFrame radius={32} fillOpacity={subtleGlowFillOpacity}>
-      <div className={cn("rounded-[2rem] p-5", liquidGlassCard)}>
-        <div className={cn("overflow-hidden rounded-[1.5rem] border", softPanel)}>
-          <div className="flex items-center justify-between px-4 py-3 text-sm text-muted-foreground shadow-[inset_0_-1px_0_var(--border)]">
-            <div className="flex items-center gap-2">
-              <Network className="size-4 text-primary" />
-              Automation Map
-            </div>
-            <Badge className={badgeClass} variant="outline">
-              Live evidence
-            </Badge>
+    <div className={cn("rounded-[2rem] p-5", liquidGlassCard)}>
+      <div className={cn("overflow-hidden rounded-[1.5rem] border", softPanel)}>
+        <div className="flex items-center justify-between px-4 py-3 text-sm text-muted-foreground shadow-[inset_0_-1px_0_var(--border)]">
+          <div className="flex items-center gap-2">
+            <Network className="size-4 text-primary" />
+            Automation Map
           </div>
-          <div className="grid gap-3 p-4">
-            {[
-              ["Support Triage", "99.2% success", "Healthy"],
-              ["REST Metric", "1.8s avg latency", "Fresh"],
-              ["Client Proof", "30d report ready", "Shared"],
-            ].map(([title, metric, status]) => (
-              <div key={title} className="rounded-2xl border border-border bg-card/85 p-4 backdrop-blur-xl">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="font-semibold text-card-foreground">{title}</div>
-                    <div className="mt-1 text-sm text-muted-foreground">{metric}</div>
-                  </div>
-                  <Badge className={badgeClass} variant="outline">
-                    {status}
-                  </Badge>
+          <Badge className={badgeClass} variant="outline">
+            Live evidence
+          </Badge>
+        </div>
+        <div className="grid gap-3 p-4">
+          {[
+            ["Support Triage", "99.2% success", "Healthy"],
+            ["REST Metric", "1.8s avg latency", "Fresh"],
+            ["Client Proof", "30d report ready", "Shared"],
+          ].map(([title, metric, status]) => (
+            <div key={title} className="rounded-2xl border border-border bg-card/85 p-4 backdrop-blur-xl">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="font-semibold text-card-foreground">{title}</div>
+                  <div className="mt-1 text-sm text-muted-foreground">{metric}</div>
                 </div>
+                <Badge className={badgeClass} variant="outline">
+                  {status}
+                </Badge>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
       </div>
-    </GlowFrame>
+    </div>
   )
 }
