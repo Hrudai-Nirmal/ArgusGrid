@@ -8,6 +8,7 @@ import { Activity, ArrowRight, BarChart3, BellRing, FileCheck2, Gauge, Network, 
 import { AuthEntryPanel } from "@/components/auth/auth-entry-panel"
 import BorderGlow from "@/components/marketing/border-glow"
 import DotField from "@/components/marketing/dot-field"
+import GlassSurface from "@/components/marketing/glass-surface"
 import { IntegrationBeamDemo } from "@/components/marketing/integration-beam-demo"
 import { InteractiveAutomationMap } from "@/components/marketing/interactive-automation-map"
 import { Badge } from "@/components/ui/badge"
@@ -105,33 +106,44 @@ export function LandingPage() {
             "radial-gradient(circle at 18% 12%, color-mix(in oklch, var(--primary), transparent 84%), transparent 30%), radial-gradient(circle at 86% 18%, color-mix(in oklch, var(--muted-foreground), transparent 90%), transparent 26%), linear-gradient(180deg, var(--background), color-mix(in oklch, var(--background), var(--card) 26%) 48%, var(--background))",
         }}
       />
-      <header className="fixed left-1/2 top-4 z-40 w-[min(calc(100%-1rem),66rem)] -translate-x-1/2 rounded-full border border-border bg-card/90 px-3 py-2 shadow-2xl shadow-black/30 backdrop-blur-2xl">
-        <div className="flex items-center justify-between gap-3">
-          <a href="#top" className="flex items-center gap-2 rounded-full px-2 py-1 font-semibold text-foreground">
-            <span className="flex size-9 items-center justify-center rounded-full border border-border bg-secondary text-secondary-foreground shadow-lg shadow-black/20">
-              <Network className="size-5" />
-            </span>
-            Meridian
-          </a>
-          <nav className="hidden items-center gap-5 text-sm text-muted-foreground md:flex">
-            <a className="transition hover:text-foreground" href="#product">
-              Product
+      <header className="fixed left-1/2 top-4 z-40 w-[min(calc(100%-1rem),66rem)] -translate-x-1/2 rounded-full">
+        <GlassSurface
+          width="100%"
+          height="auto"
+          borderRadius={999}
+          backgroundOpacity={0.08}
+          saturation={1.7}
+          displace={0.2}
+          distortionScale={-120}
+          className="rounded-full text-foreground"
+        >
+          <div className="flex w-full items-center justify-between gap-3">
+            <a href="#top" className="flex items-center gap-2 rounded-full px-2 py-1 font-semibold text-foreground">
+              <span className="flex size-9 items-center justify-center rounded-full border border-border bg-secondary text-secondary-foreground shadow-lg shadow-black/20">
+                <Network className="size-5" />
+              </span>
+              Meridian
             </a>
-            <a className="transition hover:text-foreground" href="#integrations">
-              Integrations
+            <nav className="hidden items-center gap-5 text-sm text-muted-foreground md:flex">
+              <a className="transition hover:text-foreground" href="#product">
+                Product
+              </a>
+              <a className="transition hover:text-foreground" href="#integrations">
+                Integrations
+              </a>
+              <a className="transition hover:text-foreground" href="#pricing">
+                Pricing
+              </a>
+              <a className="transition hover:text-foreground" href="#start">
+                Sign in
+              </a>
+            </nav>
+            <a className={cn(buttonVariants(), "rounded-full border border-border bg-primary text-primary-foreground hover:bg-primary/90")} href="#start">
+              Start beta
+              <ArrowRight data-icon="inline-end" />
             </a>
-            <a className="transition hover:text-foreground" href="#pricing">
-              Pricing
-            </a>
-            <a className="transition hover:text-foreground" href="#start">
-              Sign in
-            </a>
-          </nav>
-          <a className={cn(buttonVariants(), "rounded-full border border-border bg-primary text-primary-foreground hover:bg-primary/90")} href="#start">
-            Start beta
-            <ArrowRight data-icon="inline-end" />
-          </a>
-        </div>
+          </div>
+        </GlassSurface>
       </header>
 
       <section id="top" className="relative z-10 min-h-screen overflow-hidden pt-24">

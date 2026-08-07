@@ -93,11 +93,22 @@ test("homepage uses Meridian dark theme and a DotField hero background", async (
 
 test("homepage header is a centered fixed rounded bar", async () => {
   const landing = await readFile("src/components/marketing/landing-page.tsx", "utf8")
+  const glassSurface = await readFile("src/components/marketing/glass-surface.tsx", "utf8")
+  const glassSurfaceCss = await readFile("src/components/marketing/glass-surface.css", "utf8")
 
   assert.match(landing, /<header className="fixed left-1\/2 top-4 z-40/)
+  assert.match(landing, /GlassSurface/)
+  assert.match(landing, /borderRadius=\{999\}/)
+  assert.match(landing, /backgroundOpacity=\{0\.08\}/)
   assert.match(landing, /-translate-x-1\/2/)
   assert.match(landing, /rounded-full/)
-  assert.doesNotMatch(landing, /<header className="sticky top-0|border-b border-white/)
+  assert.match(glassSurface, /"use client"/)
+  assert.match(glassSurface, /useId/)
+  assert.match(glassSurface, /filterId/)
+  assert.match(glassSurface, /feDisplacementMap/)
+  assert.match(glassSurfaceCss, /\.glass-surface--svg/)
+  assert.match(glassSurfaceCss, /\.glass-surface--fallback/)
+  assert.doesNotMatch(landing, /<header className="sticky top-0|border-b border-white|bg-card\/90 px-3 py-2 shadow-2xl/)
 })
 
 test("homepage limits BorderGlow to login and billing plan cards", async () => {
