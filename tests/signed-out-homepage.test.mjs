@@ -115,3 +115,27 @@ test("integration paths use animated beams to show ingestion into Meridian", asy
   assert.match(integrations, /SDK\/API/)
   assert.match(integrations, /Meridian/)
 })
+
+test("homepage integration flow uses opaque Meridian theme surfaces only", async () => {
+  const beam = await readFile("src/components/marketing/animated-beam.tsx", "utf8")
+  const integrations = await readFile("src/components/marketing/integration-beam-demo.tsx", "utf8")
+
+  assert.match(integrations, /bg-card/)
+  assert.match(integrations, /border-border/)
+  assert.match(integrations, /text-card-foreground/)
+  assert.match(integrations, /bg-secondary/)
+  assert.match(integrations, /text-secondary-foreground/)
+  assert.match(beam, /pathColor = "var\(--border\)"/)
+  assert.match(beam, /gradientStartColor = "var\(--primary\)"/)
+  assert.match(beam, /gradientStopColor = "var\(--foreground\)"/)
+  assert.doesNotMatch(integrations, /bg-slate-950\/70|bg-white\/\[[^\]]+\]|bg-white\/10|bg-white\/12|backdrop-blur-xl/)
+  assert.doesNotMatch(integrations, /#(?:7dd3fc|c4b5fd|34d399|a78bfa|67e8f9|f0abfc|fbbf24|60a5fa)/i)
+})
+
+test("homepage automation map helper avoids React Flow zoom controls", async () => {
+  const demoMap = await readFile("src/components/marketing/interactive-automation-map.tsx", "utf8")
+
+  assert.match(demoMap, /data-testid="homepage-map-helper"/)
+  assert.match(demoMap, /absolute right-4 top-4/)
+  assert.doesNotMatch(demoMap, /absolute bottom-4 left-4/)
+})

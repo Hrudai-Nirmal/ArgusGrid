@@ -16,8 +16,8 @@ Use this checklist for production validation on `https://meridian.hrudainirmal.i
 - Confirm the homepage uses the dark liquid-glass visual style and has no homepage theme switch.
 - Confirm the hero shows a slightly blurred Meridian Automation Map screenshot behind the headline and glass panels.
 - Confirm the homepage shows the hero, Automation Map visual, integrations, client proof/reporting, security/reliability strip, pricing preview, and sign-in/register section.
-- In the public Automation Map section, drag an example React Flow node and confirm it moves without opening any real Meridian graph controls or saving changes.
-- In the Integrations section, confirm animated beams show Dify, n8n, GitHub Actions, REST metrics, and SDK/API telemetry flowing into Meridian.
+- In the public Automation Map section, drag an example React Flow node and confirm it moves without opening any real Meridian graph controls or saving changes. Confirm the helper badge does not overlap the React Flow zoom controls.
+- In the Integrations section, confirm animated beams show Dify, n8n, GitHub Actions, REST metrics, and SDK/API telemetry flowing into Meridian with opaque Meridian dark-theme node cards.
 - Click homepage CTAs and confirm they navigate to the sign-in/register section.
 - Confirm the homepage auth panel includes GitHub, Google, and email/password options.
 - New-user onboarding can create a blank project.

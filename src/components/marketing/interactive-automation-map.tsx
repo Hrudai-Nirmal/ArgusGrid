@@ -134,8 +134,8 @@ const initialMarketingEdges: Edge[] = [
     target: "marketing-triage",
     label: "classify",
     animated: true,
-    style: { stroke: "#38bdf8", strokeWidth: 2 },
-    labelStyle: { fill: "#cbd5e1", fontSize: 11, fontWeight: 600 },
+    style: { stroke: "var(--primary)", strokeWidth: 2 },
+    labelStyle: { fill: "var(--muted-foreground)", fontSize: 11, fontWeight: 600 },
   },
   {
     id: "marketing-triage-metrics",
@@ -143,8 +143,8 @@ const initialMarketingEdges: Edge[] = [
     target: "marketing-metrics",
     label: "measure",
     animated: true,
-    style: { stroke: "#38bdf8", strokeWidth: 2 },
-    labelStyle: { fill: "#cbd5e1", fontSize: 11, fontWeight: 600 },
+    style: { stroke: "var(--primary)", strokeWidth: 2 },
+    labelStyle: { fill: "var(--muted-foreground)", fontSize: 11, fontWeight: 600 },
   },
   {
     id: "marketing-metrics-proof",
@@ -152,8 +152,8 @@ const initialMarketingEdges: Edge[] = [
     target: "marketing-proof",
     label: "prove",
     animated: true,
-    style: { stroke: "#38bdf8", strokeWidth: 2 },
-    labelStyle: { fill: "#cbd5e1", fontSize: 11, fontWeight: 600 },
+    style: { stroke: "var(--primary)", strokeWidth: 2 },
+    labelStyle: { fill: "var(--muted-foreground)", fontSize: 11, fontWeight: 600 },
   },
 ]
 
@@ -165,7 +165,7 @@ export function InteractiveAutomationMap() {
   const [edges] = useEdgesState(initialMarketingEdges)
 
   return (
-    <div data-testid="homepage-demo-map" className="relative h-[540px] overflow-hidden rounded-[2rem] border border-white/15 bg-white/[0.055] shadow-2xl shadow-black/35 backdrop-blur-2xl">
+    <div data-testid="homepage-demo-map" className="relative h-[540px] overflow-hidden rounded-[2rem] border border-border bg-card shadow-2xl shadow-black/35">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -180,11 +180,11 @@ export function InteractiveAutomationMap() {
         maxZoom={1.25}
         proOptions={{ hideAttribution: true }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color="rgba(148,163,184,0.35)" />
+        <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color="var(--border)" />
         <Controls showInteractive={false} />
         <MiniMap pannable={false} zoomable={false} nodeStrokeWidth={3} />
       </ReactFlow>
-      <div className="pointer-events-none absolute bottom-4 left-4 rounded-full border border-white/15 bg-black/30 px-3 py-1 text-xs text-slate-300 backdrop-blur-xl">
+      <div data-testid="homepage-map-helper" className="pointer-events-none absolute right-4 top-4 rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground shadow-lg shadow-black/25">
         Drag nodes to rearrange the automation map.
       </div>
     </div>
