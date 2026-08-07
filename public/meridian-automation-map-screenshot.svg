@@ -1,0 +1,72 @@
+<svg width="1800" height="1120" viewBox="0 0 1800 1120" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Meridian Automation Map screenshot">
+  <rect width="1800" height="1120" fill="#050814"/>
+  <rect x="86" y="72" width="1628" height="976" rx="38" fill="#0B1020" stroke="#29324A" stroke-width="2"/>
+  <rect x="86" y="72" width="1628" height="86" rx="38" fill="#10172A"/>
+  <rect x="86" y="122" width="1628" height="36" fill="#10172A"/>
+  <text x="142" y="127" fill="#EEF2FF" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="700">Meridian Automation Map</text>
+  <text x="142" y="190" fill="#94A3B8" font-family="Inter, Arial, sans-serif" font-size="22">Support workflow health, telemetry, alerting, and client proof</text>
+  <g opacity="0.28">
+    <path d="M128 246H1670" stroke="#334155" stroke-width="1"/>
+    <path d="M128 334H1670" stroke="#334155" stroke-width="1"/>
+    <path d="M128 422H1670" stroke="#334155" stroke-width="1"/>
+    <path d="M128 510H1670" stroke="#334155" stroke-width="1"/>
+    <path d="M128 598H1670" stroke="#334155" stroke-width="1"/>
+    <path d="M128 686H1670" stroke="#334155" stroke-width="1"/>
+    <path d="M128 774H1670" stroke="#334155" stroke-width="1"/>
+    <path d="M128 862H1670" stroke="#334155" stroke-width="1"/>
+    <path d="M248 222V934" stroke="#334155" stroke-width="1"/>
+    <path d="M404 222V934" stroke="#334155" stroke-width="1"/>
+    <path d="M560 222V934" stroke="#334155" stroke-width="1"/>
+    <path d="M716 222V934" stroke="#334155" stroke-width="1"/>
+    <path d="M872 222V934" stroke="#334155" stroke-width="1"/>
+    <path d="M1028 222V934" stroke="#334155" stroke-width="1"/>
+    <path d="M1184 222V934" stroke="#334155" stroke-width="1"/>
+    <path d="M1340 222V934" stroke="#334155" stroke-width="1"/>
+    <path d="M1496 222V934" stroke="#334155" stroke-width="1"/>
+  </g>
+  <path d="M388 458C512 370 643 376 756 470" stroke="#60A5FA" stroke-width="7" stroke-linecap="round" opacity="0.8"/>
+  <path d="M845 510C962 604 1084 598 1196 498" stroke="#22D3EE" stroke-width="7" stroke-linecap="round" opacity="0.75"/>
+  <path d="M1268 506C1374 442 1470 470 1540 580" stroke="#A78BFA" stroke-width="7" stroke-linecap="round" opacity="0.75"/>
+  <g filter="url(#shadow)">
+    <rect x="222" y="380" width="276" height="148" rx="26" fill="#111827" stroke="#3B82F6" stroke-width="2"/>
+    <rect x="246" y="406" width="46" height="46" rx="14" fill="#2563EB"/>
+    <text x="310" y="434" fill="#F8FAFC" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">Support Triage</text>
+    <text x="246" y="476" fill="#CBD5E1" font-family="Inter, Arial, sans-serif" font-size="18">Dify run telemetry</text>
+    <rect x="246" y="494" width="110" height="12" rx="6" fill="#22C55E"/>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="702" y="420" width="292" height="158" rx="26" fill="#111827" stroke="#22D3EE" stroke-width="2"/>
+    <rect x="728" y="448" width="46" height="46" rx="14" fill="#0891B2"/>
+    <text x="792" y="476" fill="#F8FAFC" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">REST Metric</text>
+    <text x="728" y="520" fill="#CBD5E1" font-family="Inter, Arial, sans-serif" font-size="18">Latency, cost, tokens</text>
+    <rect x="728" y="540" width="154" height="12" rx="6" fill="#38BDF8"/>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="1148" y="374" width="302" height="156" rx="26" fill="#111827" stroke="#A78BFA" stroke-width="2"/>
+    <rect x="1174" y="402" width="46" height="46" rx="14" fill="#7C3AED"/>
+    <text x="1238" y="430" fill="#F8FAFC" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">Alert Routing</text>
+    <text x="1174" y="474" fill="#CBD5E1" font-family="Inter, Arial, sans-serif" font-size="18">Slack, email, webhook</text>
+    <rect x="1174" y="494" width="130" height="12" rx="6" fill="#A78BFA"/>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="1452" y="558" width="258" height="148" rx="26" fill="#111827" stroke="#FBBF24" stroke-width="2"/>
+    <rect x="1478" y="584" width="46" height="46" rx="14" fill="#D97706"/>
+    <text x="1542" y="612" fill="#F8FAFC" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">Client Proof</text>
+    <text x="1478" y="654" fill="#CBD5E1" font-family="Inter, Arial, sans-serif" font-size="18">Report ready</text>
+    <rect x="1478" y="674" width="98" height="12" rx="6" fill="#FBBF24"/>
+  </g>
+  <rect x="132" y="916" width="490" height="82" rx="22" fill="#0F172A" stroke="#263247"/>
+  <text x="158" y="952" fill="#94A3B8" font-family="Inter, Arial, sans-serif" font-size="18">Open incidents</text>
+  <text x="158" y="982" fill="#F8FAFC" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="700">0 active / 3 resolved</text>
+  <rect x="654" y="916" width="490" height="82" rx="22" fill="#0F172A" stroke="#263247"/>
+  <text x="680" y="952" fill="#94A3B8" font-family="Inter, Arial, sans-serif" font-size="18">Success rate</text>
+  <text x="680" y="982" fill="#F8FAFC" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="700">99.2% over 30 days</text>
+  <rect x="1176" y="916" width="490" height="82" rx="22" fill="#0F172A" stroke="#263247"/>
+  <text x="1202" y="952" fill="#94A3B8" font-family="Inter, Arial, sans-serif" font-size="18">Client summary</text>
+  <text x="1202" y="982" fill="#F8FAFC" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="700">Proof package ready</text>
+  <defs>
+    <filter id="shadow" x="0" y="0" width="1800" height="1120" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="24" stdDeviation="30" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+</svg>

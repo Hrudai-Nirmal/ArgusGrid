@@ -68,3 +68,45 @@ test("public metadata describes Meridian as monitor and client ROI software", as
   assert.match(layout, /Monitor AI automations/)
   assert.match(layout, /prove client ROI/)
 })
+
+test("homepage uses dark liquid glass styling with a blurred Automation Map screenshot hero", async () => {
+  const landing = await readFile("src/components/marketing/landing-page.tsx", "utf8")
+  const screenshot = await readFile("public/meridian-automation-map-screenshot.svg", "utf8")
+
+  assert.match(landing, /liquid glass/i)
+  assert.match(landing, /bg-slate-950/)
+  assert.match(landing, /meridian-automation-map-screenshot\.svg/)
+  assert.match(landing, /blur-\[/)
+  assert.match(landing, /InteractiveAutomationMap/)
+  assert.match(landing, /IntegrationBeamDemo/)
+  assert.match(screenshot, /Meridian Automation Map/)
+  assert.match(screenshot, /Support Triage/)
+  assert.match(screenshot, /Client Proof/)
+})
+
+test("interactive homepage map is a lightweight draggable demo without React Flow", async () => {
+  const demoMap = await readFile("src/components/marketing/interactive-automation-map.tsx", "utf8")
+
+  assert.match(demoMap, /"use client"/)
+  assert.match(demoMap, /homepage-demo-map/)
+  assert.match(demoMap, /onPointerDown/)
+  assert.match(demoMap, /setPointerCapture/)
+  assert.match(demoMap, /draggingNodeId/)
+  assert.doesNotMatch(demoMap, /ReactFlow|useNodesState|useEdgesState/)
+})
+
+test("integration paths use animated beams to show ingestion into Meridian", async () => {
+  const beam = await readFile("src/components/marketing/animated-beam.tsx", "utf8")
+  const integrations = await readFile("src/components/marketing/integration-beam-demo.tsx", "utf8")
+
+  assert.match(beam, /motion\/react/)
+  assert.match(beam, /AnimatedBeamProps/)
+  assert.match(beam, /ResizeObserver/)
+  assert.match(integrations, /AnimatedBeam/)
+  assert.match(integrations, /Dify/)
+  assert.match(integrations, /n8n/)
+  assert.match(integrations, /GitHub Actions/)
+  assert.match(integrations, /REST metrics/)
+  assert.match(integrations, /SDK\/API/)
+  assert.match(integrations, /Meridian/)
+})
