@@ -6,6 +6,7 @@ import { NextResponse } from "next/server"
 
 import { getApiUserId, requireProjectRole } from "@/lib/api-session"
 import { getProjectBillingEntitlement } from "@/lib/billing-entitlements-server"
+import { buildBillingWarningCards } from "@/lib/billing-notifications.mjs"
 import { buildBillingSyncHealthSummary, getPlanAccessState } from "@/lib/paddle-billing.mjs"
 import { getPaddleServerEnvironment, hasPaddleServerConfig, hasPaddleWebhookSecret } from "@/lib/paddle-server"
 import { getPrisma } from "@/lib/prisma"
@@ -205,6 +206,15 @@ export async function GET(request: Request) {
     transactions: paddleTransactions,
   })
   const billingConfirmations = await getRecentWebhookConfirmations(billingResourceIds)
+  const recentRateLimitJob = await prisma.notificationJob.findFirst({
+    where: {
+      projectId: project.id,
+      eventType: "billing.rate_limit_hit",
+      createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+    },
+    orderBy: { createdAt: "desc" },
+    select: { id: true },
+  })
   const latestConfirmation = billingConfirmations[0] ?? null
   const failedConfirmations = billingConfirmations.filter((event) => event.status === "FAILED").length
   const syncSummary = buildBillingSyncHealthSummary({
@@ -215,6 +225,28 @@ export async function GET(request: Request) {
     lastConfirmationType: latestConfirmation?.eventType ?? null,
     lastConfirmationStatus: latestConfirmation?.status ?? null,
     failedConfirmations,
+  })
+  const billingWarnings = buildBillingWarningCards({
+    entitlement: entitlement ? {
+      plan: entitlement.plan,
+      usage: entitlement.usage,
+      creditPool: entitlement.creditPool,
+      creditsRemaining: entitlement.creditsRemaining,
+      spendProtection: entitlement.spendProtection,
+      planLimits: {
+        workflowRuns: entitlement.plan.workflowRunLimit,
+        metricSamples: entitlement.plan.metricSampleLimit,
+        notificationJobs: entitlement.plan.notificationJobLimit,
+        reportShares: entitlement.plan.reportShareLimit,
+      },
+      isProvisional: entitlement.isProvisional,
+      provisionalEndsAt: entitlement.provisionalEndsAt,
+    } : null,
+    subscription: latestSubscription ? {
+      status: latestSubscription.status,
+      nextBilledAt: latestSubscription.nextBilledAt?.toISOString() ?? null,
+    } : null,
+    rateLimitWarning: recentRateLimitJob ? { scope: "project", limit: 0, retryAfterSeconds: 60 } : null,
   })
 
   return NextResponse.json({
@@ -234,6 +266,7 @@ export async function GET(request: Request) {
         lastConfirmation: serializeBillingConfirmation(latestConfirmation),
         failedConfirmations,
       },
+      warnings: billingWarnings,
       subscription: serializeSubscription(paddleSubscriptions[0] ?? null),
       customer: {
         hasCustomer: paddleCustomers.length > 0,

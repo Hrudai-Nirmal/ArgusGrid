@@ -8,6 +8,7 @@ import type { AlertSeverity, NotificationJob, NotificationJobStatus, Prisma, Pri
 
 import { inngest } from "@/inngest/client"
 import { consumeProjectUsageCredits } from "@/lib/billing-entitlements-server"
+import { getBillingNotificationEmailContent } from "@/lib/billing-notifications.mjs"
 import { sendEmailAttempt } from "@/lib/notifications"
 import { getPrisma } from "@/lib/prisma"
 import { logServerError } from "@/lib/server-logging"
@@ -22,6 +23,7 @@ const TERMINAL_RETENTION_MS = 30 * 24 * 60 * 60 * 1000
 
 type DatabaseClient = PrismaClient | Prisma.TransactionClient
 type AlertDeliveryEvent = "alert.opened" | "alert.resolved"
+type BillingDeliveryEvent = "billing.low_credits" | "billing.credits_exhausted" | "billing.limit_blocked" | "billing.rate_limit_hit" | "billing.payment_failed" | "billing.grace_ending"
 type QueueJobInput = {
   channel: "email" | "webhook" | "slack"
   eventType: string
@@ -79,6 +81,33 @@ async function createNotificationJob(prisma: DatabaseClient, input: QueueJobInpu
           recipient: input.recipient,
           status: skippedForBilling ? "SKIPPED" : "QUEUED",
           failureReason: skippedForBilling ? entitlement.reason : null,
+          provider: input.provider,
+          alertEventId: input.alertEventId,
+        },
+      },
+    },
+    select: { id: true, generation: true },
+  })
+}
+
+async function createInternalNotificationJob(prisma: DatabaseClient, input: QueueJobInput) {
+  return prisma.notificationJob.upsert({
+    where: { idempotencyKey: input.idempotencyKey },
+    update: {},
+    create: {
+      channel: input.channel,
+      eventType: input.eventType,
+      status: "QUEUED",
+      recipient: input.recipient,
+      destinationId: input.destinationId,
+      idempotencyKey: input.idempotencyKey,
+      projectId: input.projectId,
+      alertEventId: input.alertEventId,
+      delivery: {
+        create: {
+          channel: input.channel,
+          recipient: input.recipient,
+          status: "QUEUED",
           provider: input.provider,
           alertEventId: input.alertEventId,
         },
@@ -166,6 +195,48 @@ export async function queueAlertNotificationJobs(prisma: DatabaseClient, alertEv
   return jobs
 }
 
+/** Creates owner/member billing email jobs without spending customer credits. */
+export async function queueBillingNotificationJobs(prisma: DatabaseClient, input: {
+  projectId: string
+  eventType: BillingDeliveryEvent
+  resource?: string
+  idempotencyScope?: string
+}) {
+  const project = await prisma.project.findUnique({
+    where: { id: input.projectId },
+    select: { id: true, organizationId: true },
+  })
+  if (!project) return []
+
+  const memberships = await prisma.membership.findMany({
+    where: { organizationId: project.organizationId, role: { in: ["OWNER", "ADMIN", "MEMBER"] } },
+    include: { user: { include: { notifications: true } } },
+  })
+  const recipients = Array.from(new Set(memberships.flatMap((membership) => {
+    const email = membership.user.email?.trim().toLowerCase()
+    if (!email) return []
+    const preference = membership.user.notifications.find((item) => item.channel === "email")
+    const isAllowed = preference ? preference.enabled : true
+    return isAllowed ? [email] : []
+  })))
+
+  const day = new Date().toISOString().slice(0, 10)
+  const scope = input.idempotencyScope ?? `${day}:${input.resource ?? "project"}`
+  const jobs: { id: string; generation: number }[] = []
+  for (const recipient of recipients) {
+    jobs.push(await createInternalNotificationJob(prisma, {
+      channel: "email",
+      eventType: input.eventType,
+      recipient,
+      provider: "resend",
+      projectId: input.projectId,
+      idempotencyKey: `${input.eventType}:${input.projectId}:${scope}:email:${recipient}`,
+    }))
+  }
+
+  return jobs
+}
+
 /** Creates one test-email job for the authenticated operator. */
 export async function queueTestEmailJob(prisma: DatabaseClient, input: { projectId: string; recipient: string }) {
   const nonce = randomUUID()
@@ -227,6 +298,9 @@ function getEmailContent(job: NotificationJob & { project: { name: string }; ale
       subject: "[Meridian] Test alert email",
       text: ["Meridian test alert email", "", "This confirms that the durable email notification path can reach your account.", "", `Project: ${job.project.name}`].join("\n"),
     }
+  }
+  if (job.eventType.startsWith("billing.")) {
+    return getBillingNotificationEmailContent({ eventType: job.eventType, projectName: job.project.name })
   }
   if (!job.alertEvent) return null
   return {

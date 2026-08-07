@@ -4,6 +4,7 @@ import { z } from "zod"
 import { getApiUserId, requireProjectRole } from "@/lib/api-session"
 import { createAuditLog } from "@/lib/audit-log"
 import { authorizeProjectUsage, consumeProjectUsageCredits } from "@/lib/billing-entitlements-server"
+import { dispatchNotificationJobs, queueBillingNotificationJobs } from "@/lib/notification-jobs"
 import { getPrisma } from "@/lib/prisma"
 import { decodeReportAsset, MAX_BRAND_IMAGE_BYTES, MAX_MAP_IMAGE_BYTES } from "@/lib/report-assets.mjs"
 import { resolveReportPeriod } from "@/lib/report-periods.mjs"
@@ -128,6 +129,12 @@ export async function POST(request: Request, context: { params: Promise<{ projec
     resource: "report_share",
   })
   if (!entitlement.allowed) {
+    const billingJobs = await queueBillingNotificationJobs(prisma, {
+      projectId,
+      eventType: "billing.limit_blocked",
+      resource: "report_share",
+    })
+    await dispatchNotificationJobs(billingJobs)
     return NextResponse.json({
       error: entitlement.error,
       reason: entitlement.reason,

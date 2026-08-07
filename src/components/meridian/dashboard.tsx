@@ -528,6 +528,14 @@ type BillingStatusSnapshot = {
     description: string
     createdAt: string
   }[]
+  warnings: {
+    id: string
+    severity: "info" | "warning" | "critical"
+    title: string
+    message: string
+    action: string
+    percentUsed: number | null
+  }[]
 }
 type ProjectOperationsPolicyRecord = WorkspacePayload["project"]["operationsPolicy"]
 type OperationalStatus = "ready" | "warning" | "blocked"
@@ -7317,6 +7325,7 @@ function BillingSection({
   const [checkoutLoadingId, setCheckoutLoadingId] = useState<string | null>(null)
   const activeBillingKey = billingStatus?.subscription.billingKey ?? "free_sandbox"
   const entitlement = billingStatus?.entitlement ?? null
+  const billingWarnings = billingStatus?.warnings ?? []
   const billingAccessLabel = entitlement?.plan.isProvisional ? `Provisional ${entitlement.plan.name}` : billingStatus?.subscription.access.label ?? "Not loaded"
   const billingAccessTone = entitlement?.plan.isProvisional ? "warn" : billingStatus?.subscription.access.tone ?? "muted"
   const paddleClientToken = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN ?? ""
@@ -7508,6 +7517,35 @@ function BillingSection({
           ) : null}
         </Card>
 
+        <Card id="billing-alerts">
+          <CardHeader className="flex flex-row items-start justify-between gap-3">
+            <div>
+              <CardTitle>Billing alerts</CardTitle>
+              <CardDescription>Email billing alerts follow existing email notification preferences. Owners, admins, and members receive durable emails for blocked usage and rate-limit events.</CardDescription>
+            </div>
+            <Badge variant={billingWarnings.some((warning) => warning.severity === "critical") ? "destructive" : billingWarnings.length ? "outline" : "secondary"}>
+              {billingWarnings.length ? `${billingWarnings.length} active` : "No active alerts"}
+            </Badge>
+          </CardHeader>
+          <CardContent className="grid gap-3 md:grid-cols-2">
+            {billingWarnings.length ? billingWarnings.map((warning) => (
+              <div key={warning.id} className="grid gap-2 rounded-lg border bg-muted/20 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="font-medium">{warning.title}</div>
+                  <Badge variant={warning.severity === "critical" ? "destructive" : "outline"}>{warning.severity}</Badge>
+                </div>
+                <div className="text-sm text-muted-foreground">{warning.message}</div>
+                {typeof warning.percentUsed === "number" ? <Progress value={Math.min(100, warning.percentUsed)} /> : null}
+                <div className="text-xs text-muted-foreground">{warning.action}</div>
+              </div>
+            )) : (
+              <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground md:col-span-2">
+                No Billing alerts right now. Meridian will show low credits, credits exhausted, Plan limit approaching, payment attention, grace ending, and rate-limit warnings here.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         <Card id="billing-plans">
           <CardHeader>
             <CardTitle>Plans</CardTitle>
@@ -7610,16 +7648,6 @@ function BillingSection({
               </div>
               <Badge variant="outline">{billingStatus?.creditLedger.length ?? 0} recent entries</Badge>
             </div>
-            {entitlement && entitlement.creditPool > 0 && entitlement.creditsRemaining <= Math.max(10, Math.ceil(entitlement.creditPool * 0.1)) ? (
-              <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
-                Low credits alert: {formatBillingNumber(entitlement.creditsRemaining)} credits remain. Add a credit pack or switch spend protection to stop at plan limits before overage writes are blocked.
-              </div>
-            ) : null}
-            {entitlement && entitlement.creditsRemaining === 0 ? (
-              <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
-                Rate limit alert: plan usage plus credits are exhausted. Extra workflow runs, metric samples, notification jobs, and report shares may be blocked until the subscription renews or credits are added.
-              </div>
-            ) : null}
             <div className="grid gap-2">
               {billingStatus?.creditLedger.length ? billingStatus.creditLedger.map((entry) => (
                 <div key={entry.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-background p-3 text-xs">

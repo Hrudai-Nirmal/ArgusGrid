@@ -7,6 +7,7 @@ import { createAndDispatchAlertEvent } from "@/lib/alert-events"
 import { normalizeAlertRuleMetadata, type AnomalyDirection } from "@/lib/alert-rule-metadata"
 import { authorizeProjectUsage, consumeProjectUsageCredits } from "@/lib/billing-entitlements-server"
 import { decryptSecret } from "@/lib/crypto"
+import { dispatchNotificationJobs, queueBillingNotificationJobs } from "@/lib/notification-jobs"
 import { getEffectivePollingCadenceMin } from "@/lib/operations-policy-enforcement.mjs"
 import { getPrisma } from "@/lib/prisma"
 import { DEFAULT_RETENTION_POLICY_DAYS, getRetentionCutoff } from "@/lib/retention-policy.mjs"
@@ -406,6 +407,12 @@ export async function runProjectPolling(options: { projectId?: string; force?: b
           })
           createdSamples += samples.length
         } else {
+          const billingJobs = await queueBillingNotificationJobs(prisma, {
+            projectId: node.projectId,
+            eventType: "billing.limit_blocked",
+            resource: "metric_sample",
+          })
+          await dispatchNotificationJobs(billingJobs)
           degraded = true
           const reason = entitlement.reason ?? "Metric sample entitlement limit reached."
           breachReasons.push("Billing entitlement blocked metric samples")

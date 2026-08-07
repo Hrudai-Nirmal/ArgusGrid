@@ -5,7 +5,7 @@ import { createAlertEventWithJobs } from "@/lib/alert-events"
 import { authorizeProjectUsage, consumeProjectUsageCredits } from "@/lib/billing-entitlements-server"
 import { enforceIngestionRateLimit } from "@/lib/ingestion-rate-limits"
 import { authenticateIngestionRequest, markIngestionTokenUsed } from "@/lib/ingestion-tokens"
-import { dispatchNotificationJobs } from "@/lib/notification-jobs"
+import { dispatchNotificationJobs, queueBillingNotificationJobs } from "@/lib/notification-jobs"
 import { getPrisma } from "@/lib/prisma"
 import { executeAutomaticRemediationActions } from "@/lib/remediation-actions"
 import { evaluateRunAlertRule, normalizeRunAlertMetadata } from "@/lib/run-alert-rules.mjs"
@@ -76,6 +76,12 @@ export async function POST(request: Request) {
     resource: "workflow_run",
   })
   if (!entitlement.allowed) {
+    const billingJobs = await queueBillingNotificationJobs(prisma, {
+      projectId: token.projectId,
+      eventType: "billing.limit_blocked",
+      resource: "workflow_run",
+    })
+    await dispatchNotificationJobs(billingJobs)
     return NextResponse.json({
       error: entitlement.error,
       reason: entitlement.reason,
@@ -92,6 +98,13 @@ export async function POST(request: Request) {
     tokenId: token.id,
   })
   if (!rateLimit.allowed) {
+    const billingJobs = await queueBillingNotificationJobs(prisma, {
+      projectId: token.projectId,
+      eventType: "billing.rate_limit_hit",
+      resource: "workflow_run",
+      idempotencyScope: `${rateLimit.scopeType}:${rateLimit.limit}:${new Date().toISOString().slice(0, 10)}`,
+    })
+    await dispatchNotificationJobs(billingJobs)
     return NextResponse.json(
       {
         error: "Workflow ingestion rate limit exceeded.",
