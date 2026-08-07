@@ -133,6 +133,7 @@ const REPORT_BRAND_IMAGE_MAX_BYTES = 256 * 1024
 const SIDEBAR_FADE_MS = 140
 const LIVE_STALE_AFTER_MS = 60_000
 const LIVE_SESSION_TIMEOUT_MS = 10 * 60_000
+const DEFAULT_DASHBOARD_SECTION = "map"
 
 type ApiSetupHelpField =
   | "overview"
@@ -977,7 +978,7 @@ function getInitialFirstWorkflowTutorialState(workspace: WorkspacePayload) {
   return {
     shouldOpen,
     stepIndex,
-    section: shouldOpen ? (firstWorkflowTutorialSteps[stepIndex]?.section as DashboardSection) : "control-room",
+    section: shouldOpen ? (firstWorkflowTutorialSteps[stepIndex]?.section as DashboardSection) : DEFAULT_DASHBOARD_SECTION,
   }
 }
 

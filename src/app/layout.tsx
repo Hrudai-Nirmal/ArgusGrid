@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Meridian",
-  description: "The AI automation control room for agencies and teams.",
+  title: "Meridian — AI Automation Control Room",
+  description: "Monitor AI automations, catch failures, control cost and tokens, and prove client ROI with Meridian.",
 };
 
 export default function RootLayout({

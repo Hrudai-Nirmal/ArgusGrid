@@ -1,8 +1,8 @@
 import { MeridianDashboard } from "@/components/meridian/dashboard";
 import { OnboardingScreen } from "@/components/auth/onboarding-screen";
-import { SignInScreen } from "@/components/auth/sign-in-screen";
 import { ServiceUnavailable } from "@/components/auth/service-unavailable";
 import { SetupRequired } from "@/components/auth/setup-required";
+import { LandingPage } from "@/components/marketing/landing-page";
 import { authOptions, hasAnyAuthConfig, hasGithubAuthConfig } from "@/lib/auth";
 import { hasDatabaseConfig } from "@/lib/prisma";
 import { logServerError } from "@/lib/server-logging";
@@ -32,7 +32,7 @@ export default async function Home({
   }
 
   if (!session?.user?.id) {
-    return <SignInScreen />;
+    return <LandingPage />;
   }
 
   let workspace;

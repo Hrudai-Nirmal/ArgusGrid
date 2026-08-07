@@ -12,10 +12,14 @@ Use this checklist for production validation on `https://meridian.hrudainirmal.i
 
 ## Sign-In And Onboarding
 
-- Fresh signed-out browser lands on the Meridian sign-in screen with GitHub, Google, and email/password options.
+- Fresh signed-out browser lands on the Meridian homepage, not the dashboard or old full-screen sign-in card.
+- Confirm the homepage shows the hero, Automation Map visual, integrations, client proof/reporting, security/reliability strip, pricing preview, and sign-in/register section.
+- Click homepage CTAs and confirm they navigate to the sign-in/register section.
+- Confirm the homepage auth panel includes GitHub, Google, and email/password options.
 - New-user onboarding can create a blank project.
 - New-user onboarding can create the demo project.
 - Returning users land in the dashboard without repeated onboarding.
+- Existing users land on Automation Map by default unless the first-workflow tutorial auto-starts into a setup step.
 - Control Room shows the pilot setup checklist with project, node, integration, real signal, alert rule, and client proof steps.
 - Confirm the checklist does not mark `First real signal received` complete until a persisted workflow run or metric sample exists.
 - Click `Copy setup packet` and confirm it copies project/node setup details and SDK install guidance without raw tokens, webhook URLs, Slack URLs, signing secrets, encrypted payloads, or env values.
