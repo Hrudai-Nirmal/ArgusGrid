@@ -84,15 +84,20 @@ test("homepage uses dark liquid glass styling with a blurred Automation Map scre
   assert.match(screenshot, /Client Proof/)
 })
 
-test("interactive homepage map is a lightweight draggable demo without React Flow", async () => {
+test("interactive homepage map uses the Meridian React Flow graph without dashboard persistence", async () => {
   const demoMap = await readFile("src/components/marketing/interactive-automation-map.tsx", "utf8")
+  const landing = await readFile("src/components/marketing/landing-page.tsx", "utf8")
 
   assert.match(demoMap, /"use client"/)
   assert.match(demoMap, /homepage-demo-map/)
-  assert.match(demoMap, /onPointerDown/)
-  assert.match(demoMap, /setPointerCapture/)
-  assert.match(demoMap, /draggingNodeId/)
-  assert.doesNotMatch(demoMap, /ReactFlow|useNodesState|useEdgesState/)
+  assert.match(demoMap, /ReactFlow/)
+  assert.match(demoMap, /EndpointGraphNode/)
+  assert.match(demoMap, /useNodesState/)
+  assert.match(demoMap, /nodesDraggable/)
+  assert.match(demoMap, /nodesConnectable=\{false\}/)
+  assert.match(demoMap, /proOptions=\{\{ hideAttribution: true \}\}/)
+  assert.doesNotMatch(demoMap, /fetch\(|\/api\/projects|autosave|saveGraph|onConnect/)
+  assert.doesNotMatch(landing, /demo graph visitors can touch|This public demo/i)
 })
 
 test("integration paths use animated beams to show ingestion into Meridian", async () => {

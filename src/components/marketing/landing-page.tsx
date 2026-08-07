@@ -118,7 +118,7 @@ export function LandingPage() {
                 <ArrowRight data-icon="inline-end" />
               </a>
               <a className={cn(buttonVariants({ size: "lg", variant: "outline" }), "border-white/20 bg-white/10 text-white backdrop-blur-xl hover:bg-white/15")} href="#product">
-                Try the demo map
+                Explore the map
               </a>
             </div>
             <div className="grid gap-3 text-sm text-slate-300 sm:grid-cols-3">
@@ -143,9 +143,9 @@ export function LandingPage() {
         <div className="mx-auto grid max-w-7xl gap-10 px-5">
           <div className="grid max-w-3xl gap-3">
             <Badge className="w-fit border-white/15 bg-white/10 text-cyan-100 backdrop-blur-xl" variant="outline">Automation Map first</Badge>
-            <h2 className="text-3xl font-semibold tracking-tight text-white md:text-5xl">A demo graph visitors can touch.</h2>
+            <h2 className="text-3xl font-semibold tracking-tight text-white md:text-5xl">A graph-first map for the workflows clients depend on.</h2>
             <p className="text-lg leading-8 text-slate-300">
-              This public demo is intentionally simple: drag nodes to swap their positions. The real Meridian graph stays inside the authenticated dashboard.
+              Drag nodes to explore how Meridian frames automation health, run evidence, metric signals, and client proof in one connected workspace.
             </p>
           </div>
           <InteractiveAutomationMap />
