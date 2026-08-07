@@ -10,11 +10,14 @@ import BorderGlow from "@/components/marketing/border-glow"
 import DotField from "@/components/marketing/dot-field"
 import { IntegrationBeamDemo } from "@/components/marketing/integration-beam-demo"
 import { InteractiveAutomationMap } from "@/components/marketing/interactive-automation-map"
+import StrokeText from "@/components/marketing/stroke-text"
 import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { MERIDIAN_PRICING_PLANS } from "@/lib/billing-plans.mjs"
 import { cn } from "@/lib/utils"
+
+import "./landing-page.css"
 
 const valueCards = [
   {
@@ -69,6 +72,7 @@ const liquidGlassCard =
   "border-border/70 bg-card/55 text-card-foreground shadow-2xl shadow-black/30 backdrop-blur-2xl supports-[backdrop-filter]:bg-card/45"
 const softPanel = "border-border/70 bg-secondary/45 text-secondary-foreground backdrop-blur-2xl supports-[backdrop-filter]:bg-secondary/35"
 const badgeClass = "w-fit border-border bg-secondary text-secondary-foreground"
+const headingClass = "text-[#D8B4FE]"
 
 function formatLimit(value: number | null) {
   return value === null ? "Custom" : value.toLocaleString("en-US")
@@ -117,6 +121,7 @@ export function LandingPage() {
             "radial-gradient(circle at 18% 12%, color-mix(in oklch, var(--primary), transparent 84%), transparent 30%), radial-gradient(circle at 86% 18%, color-mix(in oklch, var(--muted-foreground), transparent 90%), transparent 26%), linear-gradient(180deg, var(--background), color-mix(in oklch, var(--background), var(--card) 26%) 48%, var(--background))",
         }}
       />
+      <div data-testid="homepage-bottom-blur" className="homepage-bottom-blur pointer-events-none fixed inset-x-0 bottom-0 z-30 backdrop-blur-lg" />
       <header
         className={cn(
           "fixed left-1/2 top-4 z-40 w-[min(calc(100%-1rem),66rem)] -translate-x-1/2 rounded-full",
@@ -181,8 +186,19 @@ export function LandingPage() {
               AI automation control room for agencies and operators
             </Badge>
             <div className="grid gap-5">
-              <h1 className="max-w-3xl text-6xl font-semibold leading-[0.86] tracking-tight text-foreground md:text-8xl xl:text-[9rem]">
-                Meridian
+              <h1 className="max-w-3xl text-6xl leading-[0.86] tracking-tight md:text-8xl xl:text-[9rem]">
+                <StrokeText
+                  text="Meridian"
+                  trigger="scroll"
+                  strokeColor="#C4B5FD"
+                  fillColor="#D8B4FE"
+                  strokeWidth={1.4}
+                  drawDuration={1.6}
+                  fillDelay={0.2}
+                  fontSize={150}
+                  fontWeight={800}
+                  letterSpacing={-5}
+                />
               </h1>
               <p className="max-w-2xl text-xl leading-8 text-muted-foreground">
                 Monitor AI automations, catch failures, control cost and tokens, and prove client ROI from one graph-first workspace.
@@ -203,8 +219,8 @@ export function LandingPage() {
                 ["Client proof", "Reports, CSV exports, periods, comparisons, and print-ready links."],
                 ["Ops evidence", "Runs, alerts, logs, delivery status, billing history, and usage."],
               ].map(([title, body]) => (
-                <div key={title} className={cn("h-full rounded-2xl p-4", liquidGlassCard)}>
-                  <div className="font-semibold text-card-foreground">{title}</div>
+                <div key={title} className={cn("hero-shine-card h-full rounded-2xl p-4", liquidGlassCard)}>
+                  <div className={cn("font-semibold", headingClass)}>{title}</div>
                   <div className="mt-1">{body}</div>
                 </div>
               ))}
@@ -221,7 +237,7 @@ export function LandingPage() {
             <Badge className={badgeClass} variant="outline">
               Automation Map first
             </Badge>
-            <h2 className="text-3xl font-semibold tracking-tight text-foreground md:text-5xl">A graph-first map for the workflows clients depend on.</h2>
+            <h2 className={cn("text-3xl font-semibold tracking-tight md:text-5xl", headingClass)}>A graph-first map for the workflows clients depend on.</h2>
             <p className="text-lg leading-8 text-muted-foreground">
               Drag nodes to explore how Meridian frames automation health, run evidence, metric signals, and client proof in one connected workspace.
             </p>
@@ -238,7 +254,7 @@ export function LandingPage() {
                     <div className="flex size-10 items-center justify-center rounded-xl border border-border bg-secondary text-secondary-foreground">
                       <Icon className="size-5" />
                     </div>
-                    <CardTitle>{card.title}</CardTitle>
+                    <CardTitle className={headingClass}>{card.title}</CardTitle>
                   </CardHeader>
                   <CardContent className="text-sm leading-6 text-muted-foreground">{card.body}</CardContent>
                 </Card>
@@ -253,7 +269,7 @@ export function LandingPage() {
           <Badge className={badgeClass} variant="outline">
             Integration paths
           </Badge>
-          <h2 className="text-3xl font-semibold tracking-tight text-foreground md:text-5xl">Watch data flow into Meridian.</h2>
+          <h2 className={cn("text-3xl font-semibold tracking-tight md:text-5xl", headingClass)}>Watch data flow into Meridian.</h2>
           <p className="text-lg leading-8 text-muted-foreground">
             Dify, n8n, GitHub Actions, REST metrics, and SDK/API telemetry all become one operational evidence stream for runs, metrics, alerts, and client proof.
           </p>
@@ -269,7 +285,7 @@ export function LandingPage() {
             <Badge className={badgeClass} variant="outline">
               Reliability
             </Badge>
-            <h2 className="mt-4 text-3xl font-semibold tracking-tight text-foreground md:text-5xl">Designed to keep automation evidence dependable.</h2>
+            <h2 className={cn("mt-4 text-3xl font-semibold tracking-tight md:text-5xl", headingClass)}>Designed to keep automation evidence dependable.</h2>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             {reliabilityItems.map((item) => {
@@ -278,7 +294,7 @@ export function LandingPage() {
                 <div key={item.title} className={cn("grid h-full gap-2 rounded-2xl p-4 text-sm", liquidGlassCard)}>
                   <div className="flex items-center gap-3 font-medium text-card-foreground">
                     <Icon className="size-5 text-primary" />
-                    <span>{item.title}</span>
+                    <span className={headingClass}>{item.title}</span>
                   </div>
                   <p className="leading-6 text-muted-foreground">{item.body}</p>
                 </div>
@@ -293,7 +309,7 @@ export function LandingPage() {
           <Badge className={badgeClass} variant="outline">
             Private beta pricing
           </Badge>
-          <h2 className="text-3xl font-semibold tracking-tight text-foreground md:text-5xl">Start conservatively, scale with credits.</h2>
+          <h2 className={cn("text-3xl font-semibold tracking-tight md:text-5xl", headingClass)}>Start conservatively, scale with credits.</h2>
           <p className="text-lg leading-8 text-muted-foreground">
             Plans include monthly usage, with prepaid credits available inside Billing after sign-in. Public pricing buttons lead to account creation, not checkout.
           </p>
@@ -303,7 +319,7 @@ export function LandingPage() {
             <GlowFrame key={plan.id} className="h-full">
               <Card className={cn("h-full", liquidGlassCard)}>
                 <CardHeader>
-                  <CardTitle>{plan.name}</CardTitle>
+                  <CardTitle className={headingClass}>{plan.name}</CardTitle>
                   <CardDescription className="text-muted-foreground">{plan.summary}</CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-4">
@@ -340,7 +356,7 @@ export function LandingPage() {
             <Badge className={badgeClass} variant="outline">
               Sign in / register
             </Badge>
-            <h2 className="text-3xl font-semibold tracking-tight text-foreground md:text-5xl">Open Meridian and start with the graph.</h2>
+            <h2 className={cn("text-3xl font-semibold tracking-tight md:text-5xl", headingClass)}>Open Meridian and start with the graph.</h2>
             <p className="text-lg leading-8 text-muted-foreground">
               New accounts get guided setup for the first node, telemetry signal, run verification, and client proof report. Returning users go straight to the dashboard.
             </p>
@@ -375,12 +391,12 @@ function HeroGlassPanel() {
             ["REST Metric", "1.8s avg latency", "Fresh"],
             ["Client Proof", "30d report ready", "Shared"],
           ].map(([title, metric, status]) => (
-            <div key={title} className="rounded-2xl border border-border bg-card/85 p-4 backdrop-blur-xl">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="font-semibold text-card-foreground">{title}</div>
-                  <div className="mt-1 text-sm text-muted-foreground">{metric}</div>
-                </div>
+              <div key={title} className="rounded-2xl border border-border bg-card/85 p-4 backdrop-blur-xl">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className={cn("font-semibold", headingClass)}>{title}</div>
+                    <div className="mt-1 text-sm text-muted-foreground">{metric}</div>
+                  </div>
                 <Badge className={badgeClass} variant="outline">
                   {status}
                 </Badge>

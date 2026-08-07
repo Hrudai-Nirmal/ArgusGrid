@@ -4,6 +4,7 @@
 
 "use client"
 
+import { useState } from "react"
 import {
   Background,
   BackgroundVariant,
@@ -18,6 +19,7 @@ import {
 
 import { EndpointGraphNode } from "@/components/meridian/endpoint-node"
 import type { EndpointNodeData } from "@/lib/meridian-data"
+import { cn } from "@/lib/utils"
 
 const nodeTypes = { endpoint: EndpointGraphNode }
 
@@ -163,29 +165,47 @@ const initialMarketingEdges: Edge[] = [
 export function InteractiveAutomationMap() {
   const [nodes, , onNodesChange] = useNodesState(initialMarketingNodes)
   const [edges] = useEdgesState(initialMarketingEdges)
+  const [isInteractive, setIsInteractive] = useState(false)
 
   return (
     <div data-testid="homepage-demo-map" className="relative h-[540px] overflow-hidden rounded-[2rem] border border-border bg-card shadow-2xl shadow-black/35">
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        nodeTypes={nodeTypes}
-        onNodesChange={onNodesChange}
-        nodesDraggable
-        nodesConnectable={false}
-        elementsSelectable
-        edgesFocusable={false}
-        fitView
-        minZoom={0.45}
-        maxZoom={1.25}
-        proOptions={{ hideAttribution: true }}
-      >
-        <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color="var(--border)" />
-        <Controls showInteractive={false} />
-        <MiniMap pannable={false} zoomable={false} nodeStrokeWidth={3} />
-      </ReactFlow>
+      <div className={cn("h-full", !isInteractive && "pointer-events-none")}>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          onNodesChange={onNodesChange}
+          nodesDraggable={isInteractive}
+          nodesConnectable={false}
+          elementsSelectable={isInteractive}
+          edgesFocusable={false}
+          panOnDrag={isInteractive}
+          zoomOnScroll={isInteractive}
+          zoomOnPinch={isInteractive}
+          zoomOnDoubleClick={isInteractive}
+          fitView
+          minZoom={0.45}
+          maxZoom={1.25}
+          proOptions={{ hideAttribution: true }}
+        >
+          <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color="var(--border)" />
+          <Controls showInteractive={false} />
+          <MiniMap pannable={false} zoomable={false} nodeStrokeWidth={3} />
+        </ReactFlow>
+      </div>
+      {!isInteractive ? (
+        <div className="pointer-events-none absolute inset-0 grid place-items-center bg-background/15">
+          <button
+            type="button"
+            className="pointer-events-auto rounded-full border border-border bg-card px-5 py-2 text-sm font-medium text-card-foreground shadow-2xl shadow-black/35 transition hover:bg-secondary"
+            onClick={() => setIsInteractive(true)}
+          >
+            Enable graph interaction
+          </button>
+        </div>
+      ) : null}
       <div data-testid="homepage-map-helper" className="pointer-events-none absolute right-4 top-4 rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground shadow-lg shadow-black/25">
-        Drag nodes to rearrange the automation map.
+        {isInteractive ? "Drag nodes to rearrange the automation map." : "Graph interaction is paused for smooth scrolling."}
       </div>
     </div>
   )
