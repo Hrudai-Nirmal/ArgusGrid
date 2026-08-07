@@ -1,9 +1,14 @@
 .glass-surface {
+  --glass-rim: color-mix(in oklch, var(--foreground), transparent 76%);
+  --glass-rim-highlight: color-mix(in oklch, var(--foreground), transparent 88%);
+
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  border: 1px solid var(--glass-rim);
+  background: rgb(255 255 255 / var(--glass-frost, 0.18));
   transition: opacity 0.26s ease-out;
 }
 
@@ -30,9 +35,10 @@
 }
 
 .glass-surface--svg {
-  background: light-dark(hsl(0 0% 100% / var(--glass-frost, 0)), hsl(0 0% 0% / var(--glass-frost, 0)));
+  background: rgb(255 255 255 / var(--glass-frost, 0.18));
   backdrop-filter: var(--filter-id, url("#glass-filter")) saturate(var(--glass-saturation, 1));
   box-shadow:
+    0 0 0 1px var(--glass-rim-highlight) inset,
     0 0 2px 1px light-dark(color-mix(in oklch, black, transparent 85%), color-mix(in oklch, white, transparent 65%)) inset,
     0 0 10px 4px light-dark(color-mix(in oklch, black, transparent 90%), color-mix(in oklch, white, transparent 85%)) inset,
     0 4px 16px rgb(17 17 26 / 5%),
@@ -44,9 +50,9 @@
 }
 
 .glass-surface--fallback {
-  border: 1px solid rgb(255 255 255 / 30%);
   background: rgb(255 255 255 / 25%);
   box-shadow:
+    0 0 0 1px var(--glass-rim-highlight) inset,
     0 8px 32px 0 rgb(31 38 135 / 20%),
     0 2px 16px 0 rgb(31 38 135 / 10%),
     inset 0 1px 0 0 rgb(255 255 255 / 40%),
@@ -57,9 +63,9 @@
 
 @media (prefers-color-scheme: dark) {
   .glass-surface--fallback {
-    border: 1px solid rgb(255 255 255 / 20%);
-    background: rgb(255 255 255 / 10%);
+    background: rgb(255 255 255 / var(--glass-frost, 0.18));
     box-shadow:
+      0 0 0 1px var(--glass-rim-highlight) inset,
       inset 0 1px 0 0 rgb(255 255 255 / 20%),
       inset 0 -1px 0 0 rgb(255 255 255 / 10%);
     backdrop-filter: blur(12px) saturate(1.8) brightness(1.2);
