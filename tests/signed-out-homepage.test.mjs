@@ -148,7 +148,7 @@ test("homepage limits lilac tone to section headings and the hero Meridian wordm
   assert.match(landing, /trigger="scroll"/)
   assert.match(landing, /strokeColor="#C4B5FD"/)
   assert.match(landing, /fillColor="#D8B4FE"/)
-  assert.match(landing, /fontSize=\{190\}/)
+  assert.match(landing, /fontSize=\{230\}/)
   assert.doesNotMatch(landing, /<h1[^>]*>\s*Meridian\s*<\/h1>/)
   assert.doesNotMatch(landing, /CardTitle className=\{headingClass\}/)
   assert.doesNotMatch(landing, /<span className=\{headingClass\}>/)
@@ -174,10 +174,10 @@ test("billing plan choice buttons have a visible hover state inside glowing card
 test("homepage hero and section layout use larger brand type with golden-ratio columns", async () => {
   const landing = await readFile("src/components/marketing/landing-page.tsx", "utf8")
 
-  assert.match(landing, /lg:grid-cols-\[0\.618fr_1fr\]/)
-  assert.match(landing, /text-7xl/)
-  assert.match(landing, /md:text-9xl/)
-  assert.match(landing, /xl:text-\[11rem\]/)
+  assert.match(landing, /lg:grid-cols-\[1fr_0\.618fr\]/)
+  assert.match(landing, /text-8xl/)
+  assert.match(landing, /md:text-\[10rem\]/)
+  assert.match(landing, /xl:text-\[13rem\]/)
   assert.match(landing, /items-center/)
 })
 

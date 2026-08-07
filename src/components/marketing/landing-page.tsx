@@ -180,13 +180,13 @@ export function LandingPage() {
               "linear-gradient(180deg, color-mix(in oklch, var(--background), transparent 14%), color-mix(in oklch, var(--background), transparent 34%) 42%, var(--background))",
           }}
         />
-        <div className="relative mx-auto grid min-h-[calc(100vh-6rem)] max-w-7xl items-center gap-12 px-5 py-16 lg:grid-cols-[0.618fr_1fr]">
+        <div className="relative mx-auto grid min-h-[calc(100vh-6rem)] max-w-7xl items-center gap-12 px-5 py-16 lg:grid-cols-[1fr_0.618fr]">
           <div className="grid gap-7">
             <Badge className={badgeClass} variant="outline">
               AI automation control room for agencies and operators
             </Badge>
             <div className="grid gap-5">
-              <h1 className="max-w-4xl text-7xl leading-[0.82] tracking-tight md:text-9xl xl:text-[11rem]">
+              <h1 className="max-w-5xl text-8xl leading-[0.8] tracking-tight md:text-[10rem] xl:text-[13rem]">
                 <StrokeText
                   text="Meridian"
                   trigger="scroll"
@@ -195,9 +195,9 @@ export function LandingPage() {
                   strokeWidth={1.4}
                   drawDuration={1.6}
                   fillDelay={0.2}
-                  fontSize={190}
+                  fontSize={230}
                   fontWeight={800}
-                  letterSpacing={-7}
+                  letterSpacing={-8}
                 />
               </h1>
               <p className="max-w-2xl text-xl leading-8 text-muted-foreground">
