@@ -65,6 +65,7 @@ const reliabilityItems = [
 
 const pricingPreviewNames = ["Free Sandbox", "Solo Beta", "Agency Beta", "Enterprise Pilot"]
 const glowFrameColors = ["#A855F7", "#B497CF", "#7C3AED"]
+const subtleGlowFillOpacity = 0
 const liquidGlassCard =
   "border-border/70 bg-card/55 text-card-foreground shadow-2xl shadow-black/30 backdrop-blur-2xl supports-[backdrop-filter]:bg-card/45"
 const softPanel = "border-border/70 bg-secondary/45 text-secondary-foreground backdrop-blur-2xl supports-[backdrop-filter]:bg-secondary/35"
@@ -74,7 +75,17 @@ function formatLimit(value: number | null) {
   return value === null ? "Custom" : value.toLocaleString("en-US")
 }
 
-function GlowFrame({ children, className, radius = 28 }: { children: ReactNode; className?: string; radius?: number }) {
+function GlowFrame({
+  children,
+  className,
+  radius = 28,
+  fillOpacity = 0.42,
+}: {
+  children: ReactNode
+  className?: string
+  radius?: number
+  fillOpacity?: number
+}) {
   return (
     <BorderGlow
       className={className}
@@ -87,6 +98,7 @@ function GlowFrame({ children, className, radius = 28 }: { children: ReactNode; 
       coneSpread={25}
       animated={false}
       colors={glowFrameColors}
+      fillOpacity={fillOpacity}
     >
       {children}
     </BorderGlow>
@@ -198,10 +210,12 @@ export function LandingPage() {
                 ["Client proof", "Reports, CSV exports, periods, comparisons, and print-ready links."],
                 ["Ops evidence", "Runs, alerts, logs, delivery status, billing history, and usage."],
               ].map(([title, body]) => (
-                <div key={title} className={cn("h-full rounded-2xl p-4", liquidGlassCard)}>
-                  <div className="font-semibold text-card-foreground">{title}</div>
-                  <div className="mt-1">{body}</div>
-                </div>
+                <GlowFrame key={title} className="h-full" radius={20} fillOpacity={subtleGlowFillOpacity}>
+                  <div className={cn("h-full rounded-2xl p-4", liquidGlassCard)}>
+                    <div className="font-semibold text-card-foreground">{title}</div>
+                    <div className="mt-1">{body}</div>
+                  </div>
+                </GlowFrame>
               ))}
             </div>
           </div>
@@ -221,20 +235,24 @@ export function LandingPage() {
               Drag nodes to explore how Meridian frames automation health, run evidence, metric signals, and client proof in one connected workspace.
             </p>
           </div>
-          <InteractiveAutomationMap />
+          <GlowFrame radius={32} fillOpacity={subtleGlowFillOpacity}>
+            <InteractiveAutomationMap />
+          </GlowFrame>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {valueCards.map((card) => {
               const Icon = card.icon
               return (
-                <Card key={card.title} className={cn("h-full", liquidGlassCard)}>
-                  <CardHeader>
-                    <div className="flex size-10 items-center justify-center rounded-xl border border-border bg-secondary text-secondary-foreground">
-                      <Icon className="size-5" />
-                    </div>
-                    <CardTitle>{card.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-sm leading-6 text-muted-foreground">{card.body}</CardContent>
-                </Card>
+                <GlowFrame key={card.title} className="h-full" fillOpacity={subtleGlowFillOpacity}>
+                  <Card className={cn("h-full", liquidGlassCard)}>
+                    <CardHeader>
+                      <div className="flex size-10 items-center justify-center rounded-xl border border-border bg-secondary text-secondary-foreground">
+                        <Icon className="size-5" />
+                      </div>
+                      <CardTitle>{card.title}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-sm leading-6 text-muted-foreground">{card.body}</CardContent>
+                  </Card>
+                </GlowFrame>
               )
             })}
           </div>
@@ -251,7 +269,9 @@ export function LandingPage() {
             Dify, n8n, GitHub Actions, REST metrics, and SDK/API telemetry all become one operational evidence stream for runs, metrics, alerts, and client proof.
           </p>
         </div>
-        <IntegrationBeamDemo />
+        <GlowFrame radius={32} fillOpacity={subtleGlowFillOpacity}>
+          <IntegrationBeamDemo />
+        </GlowFrame>
       </section>
 
       <section className="relative z-10 border-y border-border py-16">
@@ -266,13 +286,15 @@ export function LandingPage() {
             {reliabilityItems.map((item) => {
               const Icon = item.icon
               return (
-                <div key={item.title} className={cn("grid h-full gap-2 rounded-2xl p-4 text-sm", liquidGlassCard)}>
-                  <div className="flex items-center gap-3 font-medium text-card-foreground">
-                    <Icon className="size-5 text-primary" />
-                    <span>{item.title}</span>
+                <GlowFrame key={item.title} className="h-full" radius={20} fillOpacity={subtleGlowFillOpacity}>
+                  <div className={cn("grid h-full gap-2 rounded-2xl p-4 text-sm", liquidGlassCard)}>
+                    <div className="flex items-center gap-3 font-medium text-card-foreground">
+                      <Icon className="size-5 text-primary" />
+                      <span>{item.title}</span>
+                    </div>
+                    <p className="leading-6 text-muted-foreground">{item.body}</p>
                   </div>
-                  <p className="leading-6 text-muted-foreground">{item.body}</p>
-                </div>
+                </GlowFrame>
               )
             })}
           </div>
@@ -349,37 +371,39 @@ export function LandingPage() {
 
 function HeroGlassPanel() {
   return (
-    <div className={cn("rounded-[2rem] p-5", liquidGlassCard)}>
-      <div className={cn("overflow-hidden rounded-[1.5rem] border", softPanel)}>
-        <div className="flex items-center justify-between px-4 py-3 text-sm text-muted-foreground shadow-[inset_0_-1px_0_var(--border)]">
-          <div className="flex items-center gap-2">
-            <Network className="size-4 text-primary" />
-            Automation Map
-          </div>
-          <Badge className={badgeClass} variant="outline">
-            Live evidence
-          </Badge>
-        </div>
-        <div className="grid gap-3 p-4">
-          {[
-            ["Support Triage", "99.2% success", "Healthy"],
-            ["REST Metric", "1.8s avg latency", "Fresh"],
-            ["Client Proof", "30d report ready", "Shared"],
-          ].map(([title, metric, status]) => (
-            <div key={title} className="rounded-2xl border border-border bg-card/85 p-4 backdrop-blur-xl">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="font-semibold text-card-foreground">{title}</div>
-                  <div className="mt-1 text-sm text-muted-foreground">{metric}</div>
-                </div>
-                <Badge className={badgeClass} variant="outline">
-                  {status}
-                </Badge>
-              </div>
+    <GlowFrame radius={32} fillOpacity={subtleGlowFillOpacity}>
+      <div className={cn("rounded-[2rem] p-5", liquidGlassCard)}>
+        <div className={cn("overflow-hidden rounded-[1.5rem] border", softPanel)}>
+          <div className="flex items-center justify-between px-4 py-3 text-sm text-muted-foreground shadow-[inset_0_-1px_0_var(--border)]">
+            <div className="flex items-center gap-2">
+              <Network className="size-4 text-primary" />
+              Automation Map
             </div>
-          ))}
+            <Badge className={badgeClass} variant="outline">
+              Live evidence
+            </Badge>
+          </div>
+          <div className="grid gap-3 p-4">
+            {[
+              ["Support Triage", "99.2% success", "Healthy"],
+              ["REST Metric", "1.8s avg latency", "Fresh"],
+              ["Client Proof", "30d report ready", "Shared"],
+            ].map(([title, metric, status]) => (
+              <div key={title} className="rounded-2xl border border-border bg-card/85 p-4 backdrop-blur-xl">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="font-semibold text-card-foreground">{title}</div>
+                    <div className="mt-1 text-sm text-muted-foreground">{metric}</div>
+                  </div>
+                  <Badge className={badgeClass} variant="outline">
+                    {status}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
+    </GlowFrame>
   )
 }
