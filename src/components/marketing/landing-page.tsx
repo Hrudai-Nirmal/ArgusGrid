@@ -123,8 +123,8 @@ export function LandingPage() {
           width="100%"
           height="auto"
           borderRadius={999}
-          backgroundOpacity={0.18}
-          saturation={1.85}
+          backgroundOpacity={0.1}
+          saturation={2.1}
           displace={0.2}
           distortionScale={-120}
           className="rounded-full text-foreground"

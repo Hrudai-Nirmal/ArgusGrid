@@ -2,7 +2,7 @@
 
 Meridian is the AI automation control room for agencies and teams. Projects open to a graph-first automation map; selecting a node shows health, API metadata, alerts, recent runs, cost, latency, token usage, and quality signals so teams can prove whether automations are reliable and worth running.
 
-The public root route is signed-out friendly: healthy signed-out visitors see a polished Meridian dark-theme homepage with product positioning, a cursor-reactive DotField hero, a foggier SVG-filter liquid-glass header with a visible rim, Automation Map/client proof visuals, integrations, reliability proof, liquid-glass surfaces, subtle border-only glow on content cards, stronger cursor-reactive border glow on pricing and login cards, high-contrast pricing CTAs, and the reusable GitHub/Google/email auth panel. Authenticated users still enter the app directly at `/`, and the dashboard defaults to the Automation Map unless the first-workflow tutorial auto-starts and routes them to a guided setup step.
+The public root route is signed-out friendly: healthy signed-out visitors see a polished Meridian dark-theme homepage with product positioning, a cursor-reactive DotField hero, a layered capsule-style liquid-glass header with a dark inner pool, visible rim, and subtle chromatic edge, Automation Map/client proof visuals, integrations, reliability proof, liquid-glass surfaces, subtle border-only glow on content cards, stronger cursor-reactive border glow on pricing and login cards, high-contrast pricing CTAs, and the reusable GitHub/Google/email auth panel. Authenticated users still enter the app directly at `/`, and the dashboard defaults to the Automation Map unless the first-workflow tutorial auto-starts and routes them to a guided setup step.
 
 ## Stack
 
