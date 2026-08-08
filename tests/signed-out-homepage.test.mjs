@@ -32,8 +32,28 @@ test("signed-out homepage contains the required Meridian product sections", asyn
   assert.match(landing, /Agency Beta/)
   assert.match(landing, /Enterprise Pilot/)
   assert.match(landing, /AuthEntryPanel/)
+  assert.match(landing, /How Meridian works/)
+  assert.match(landing, /Connect workflow/)
+  assert.match(landing, /Monitor runs, metrics, and alerts/)
+  assert.match(landing, /Share client proof/)
+  assert.match(landing, /Client proof example/)
+  assert.match(landing, /30-day operations review/)
+  assert.match(landing, /Print-ready client report/)
   assert.doesNotMatch(landing, /Security and reliability|Built for evidence, not secret sprawl|ShieldCheck|LockKeyhole/)
   assert.doesNotMatch(landing, /PADDLE_API_KEY|PADDLE_NOTIFICATION_WEBHOOK_SECRET|CRON_SECRET|RESEND_API_KEY|pdl_(live|sdbx)_apikey|Bearer\s+[A-Za-z0-9_-]{20,}/)
+})
+
+test("homepage exposes public conversion CTAs into workflow proof and client proof", async () => {
+  const landing = await readFile("src/components/marketing/landing-page.tsx", "utf8")
+
+  assert.match(landing, /href="#workflow"/)
+  assert.match(landing, /View demo workflow/)
+  assert.match(landing, /href="#client-proof"/)
+  assert.match(landing, /See client proof example/)
+  assert.match(landing, /id="workflow"/)
+  assert.match(landing, /id="client-proof"/)
+  assert.match(landing, /proofMetrics/)
+  assert.doesNotMatch(landing, /public report token|shareToken|\/reports\/\[shareToken\]|api\/projects/)
 })
 
 test("auth entry panel keeps OAuth and email registration flows reusable", async () => {

@@ -11,7 +11,7 @@ import { AuthEntryPanel } from "@/components/auth/auth-entry-panel"
  */
 export function SignInScreen() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background p-6 text-foreground">
+    <main className="dark flex min-h-screen items-center justify-center bg-background p-6 text-foreground">
       <div className="w-full max-w-md">
         <AuthEntryPanel />
       </div>

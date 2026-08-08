@@ -65,6 +65,31 @@ const reliabilityItems = [
   },
 ]
 
+const workflowSteps = [
+  {
+    title: "Connect workflow",
+    body: "Create a node for a Dify app, n8n automation, GitHub Action, SDK trace, or REST metric and send the first signal.",
+    icon: Network,
+  },
+  {
+    title: "Monitor runs, metrics, and alerts",
+    body: "Meridian turns submitted runs, metric samples, cost, tokens, and alert delivery evidence into one operating picture.",
+    icon: Activity,
+  },
+  {
+    title: "Share client proof",
+    body: "Package the map, incidents, comparison metrics, CSV exports, and report notes into a client-ready proof link.",
+    icon: FileCheck2,
+  },
+]
+
+const proofMetrics = [
+  ["Run success", "98.7%", "+4.1% vs previous period"],
+  ["Avg latency", "1.6s", "320ms faster"],
+  ["Cost tracked", "$142", "tokens and run costs visible"],
+  ["Incidents", "2 resolved", "0 active"],
+]
+
 const pricingPreviewNames = ["Free Sandbox", "Solo Beta", "Agency Beta", "Enterprise Pilot"]
 const glowFrameColors = ["#A855F7", "#B497CF", "#7C3AED"]
 const subtleGlowFillOpacity = 0
@@ -204,13 +229,19 @@ export function LandingPage() {
                 Monitor AI automations, catch failures, control cost and tokens, and prove client ROI from one graph-first workspace.
               </p>
             </div>
-            <div className="flex flex-col gap-3 sm:flex-row">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <a className={cn(buttonVariants({ size: "lg" }), "border border-border bg-primary text-primary-foreground hover:bg-primary/90")} href="#start">
                 Sign in or register
                 <ArrowRight data-icon="inline-end" />
               </a>
               <a className={cn(buttonVariants({ size: "lg", variant: "outline" }), "border-border bg-secondary text-secondary-foreground hover:bg-muted")} href="#product">
                 Explore the map
+              </a>
+              <a className={cn(buttonVariants({ size: "lg", variant: "outline" }), "border-border bg-secondary text-secondary-foreground hover:bg-muted")} href="#workflow">
+                View demo workflow
+              </a>
+              <a className={cn(buttonVariants({ size: "lg", variant: "outline" }), "border-border bg-secondary text-secondary-foreground hover:bg-muted")} href="#client-proof">
+                See client proof example
               </a>
             </div>
             <div className="grid gap-3 text-sm text-muted-foreground sm:grid-cols-3">
@@ -228,6 +259,39 @@ export function LandingPage() {
           </div>
 
           <HeroGlassPanel />
+        </div>
+      </section>
+
+      <section id="workflow" className="relative z-10 mx-auto grid max-w-7xl gap-8 px-5 py-20">
+        <div className="grid max-w-3xl gap-3">
+          <Badge className={badgeClass} variant="outline">
+            How Meridian works
+          </Badge>
+          <h2 className={cn("text-3xl font-semibold tracking-tight md:text-5xl", headingClass)}>From first signal to client proof in three steps.</h2>
+          <p className="text-lg leading-8 text-muted-foreground">
+            New visitors can understand the product path before they sign in: connect one workflow, verify live evidence, then turn that evidence into a client-facing report.
+          </p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          {workflowSteps.map((step, index) => {
+            const Icon = step.icon
+            return (
+              <Card key={step.title} className={cn("h-full", liquidGlassCard)}>
+                <CardHeader>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex size-11 items-center justify-center rounded-xl border border-border bg-secondary text-secondary-foreground">
+                      <Icon className="size-5" />
+                    </div>
+                    <Badge className={badgeClass} variant="outline">
+                      Step {index + 1}
+                    </Badge>
+                  </div>
+                  <CardTitle>{step.title}</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm leading-6 text-muted-foreground">{step.body}</CardContent>
+              </Card>
+            )
+          })}
         </div>
       </section>
 
@@ -261,6 +325,54 @@ export function LandingPage() {
               )
             })}
           </div>
+        </div>
+      </section>
+
+      <section id="client-proof" className="relative z-10 border-y border-border py-20">
+        <div className="mx-auto grid max-w-7xl items-start gap-10 px-5 lg:grid-cols-[0.618fr_1fr]">
+          <div className="grid gap-4">
+            <Badge className={badgeClass} variant="outline">
+              Client proof example
+            </Badge>
+            <h2 className={cn("text-3xl font-semibold tracking-tight md:text-5xl", headingClass)}>Show the operational story clients actually need.</h2>
+            <p className="text-lg leading-8 text-muted-foreground">
+              Meridian reports turn workflow telemetry into a readable 30-day operations review with comparisons, incident history, cost, tokens, freshness, and a print-ready client summary.
+            </p>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <a className={cn(buttonVariants({ size: "lg" }), "border border-border bg-primary text-primary-foreground hover:bg-primary/90")} href="#start">
+                Create a proof link
+              </a>
+              <a className={cn(buttonVariants({ size: "lg", variant: "outline" }), "border-border bg-secondary text-secondary-foreground hover:bg-muted")} href="#pricing">
+                Compare beta plans
+              </a>
+            </div>
+          </div>
+          <GlowFrame radius={32} fillOpacity={subtleGlowFillOpacity}>
+            <div className={cn("grid gap-5 rounded-[2rem] p-6", liquidGlassCard)}>
+              <div className="flex flex-col gap-2 border-b border-border pb-5 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="text-sm uppercase tracking-[0.18em] text-muted-foreground">Print-ready client report</div>
+                  <h3 className="mt-2 text-2xl font-semibold text-card-foreground">30-day operations review</h3>
+                  <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">Prepared for a client stakeholder: uptime, incidents, spend, token usage, workflow freshness, and ROI proof in one read-only view.</p>
+                </div>
+                <Badge className={badgeClass} variant="outline">
+                  Client-safe
+                </Badge>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {proofMetrics.map(([label, value, detail]) => (
+                  <div key={label} className="rounded-2xl border border-border bg-card/80 p-4">
+                    <div className="text-sm text-muted-foreground">{label}</div>
+                    <div className="mt-2 text-2xl font-semibold text-card-foreground">{value}</div>
+                    <div className="mt-1 text-xs leading-5 text-muted-foreground">{detail}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="rounded-2xl border border-border bg-secondary/40 p-4 text-sm leading-6 text-muted-foreground">
+                Incident timeline: two resolved automation issues, no active incidents, latest telemetry sample fresh within the reporting window.
+              </div>
+            </div>
+          </GlowFrame>
         </div>
       </section>
 

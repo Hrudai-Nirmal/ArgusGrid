@@ -26,6 +26,8 @@ test("Auth config exposes GitHub, Google, and credentials providers safely", asy
   assert.match(auth, /hasGoogleAuthConfig/)
   assert.match(auth, /strategy:\s*"jwt"/)
   assert.match(signIn, /AuthEntryPanel/)
+  assert.match(signIn, /className="dark flex min-h-screen items-center justify-center bg-background p-6 text-foreground"/)
+  assert.doesNotMatch(signIn, /theme|prefers-color-scheme|localStorage/)
   assert.match(authPanel, /Continue with Google/)
   assert.match(authPanel, /Email/)
   assert.match(authPanel, /Password/)
