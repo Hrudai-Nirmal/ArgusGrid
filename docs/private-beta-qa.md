@@ -27,6 +27,8 @@ Use this checklist for production validation on `https://meridian.hrudainirmal.i
 - Returning users land in the dashboard without repeated onboarding.
 - Existing users land on Automation Map by default unless the first-workflow tutorial auto-starts into a setup step.
 - Control Room shows the pilot setup checklist with project, node, integration, real signal, alert rule, and client proof steps.
+- Control Room shows `Create your first monitored workflow` with starter choices for Dify workflow, n8n workflow, JavaScript SDK, GitHub Actions, and REST metric.
+- From the activation card, click `Add first workflow node`, `Choose a starter path`, and `Send test telemetry`; confirm they route to Automation Map or Integrations without exposing raw tokens.
 - Confirm the checklist does not mark `First real signal received` complete until a persisted workflow run or metric sample exists.
 - Click `Copy setup packet` and confirm it copies project/node setup details and SDK install guidance without raw tokens, webhook URLs, Slack URLs, signing secrets, encrypted payloads, or env values.
 - Confirm the dashboard header does not show `Sign out`.
@@ -117,6 +119,7 @@ Use this checklist for production validation on `https://meridian.hrudainirmal.i
 ## Runs And Telemetry
 
 - Create or reuse a disposable ingestion token.
+- In a blank/no-run project, open Runs and confirm the empty state says `No real workflow runs yet` and points users to Integrations plus `Send test telemetry`, not Settings.
 - Confirm the raw token is shown once and later lists only safe prefix metadata.
 - Revoke a disposable token and confirm future ingestion with it is rejected.
 - Post a valid `/api/ingest/runs` payload for a selected node.

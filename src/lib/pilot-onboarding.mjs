@@ -51,6 +51,44 @@ const NEXT_ACTION_LABELS = new Map([
   ["client-proof", "Create client proof"],
 ])
 
+const FIRST_WORKFLOW_STARTER_CHOICES = [
+  {
+    id: "dify",
+    label: "Dify workflow",
+    detail: "Monitor a Dify chatbot, agent, or workflow by posting one completed run to Meridian.",
+    section: "integrations",
+    actionLabel: "Set up Dify",
+  },
+  {
+    id: "n8n",
+    label: "n8n workflow",
+    detail: "Send execution status and step timing from an n8n HTTP Request node.",
+    section: "integrations",
+    actionLabel: "Set up n8n",
+  },
+  {
+    id: "javascript-sdk",
+    label: "JavaScript SDK",
+    detail: "Use the published npm package for Node.js jobs, scripts, and serverless handlers.",
+    section: "integrations",
+    actionLabel: "Use SDK",
+  },
+  {
+    id: "github-actions",
+    label: "GitHub Actions",
+    detail: "Report CI workflow status, duration, and job evidence into the selected node.",
+    section: "integrations",
+    actionLabel: "Set up CI",
+  },
+  {
+    id: "custom-rest-metric",
+    label: "REST metric",
+    detail: "Poll a JSON endpoint for health, latency, cost, queue depth, or a custom metric.",
+    section: "integrations",
+    actionLabel: "Configure REST",
+  },
+]
+
 function clampPercent(value) {
   if (!Number.isFinite(value)) return 0
   return Math.max(0, Math.min(100, Math.round(value)))
@@ -75,6 +113,9 @@ function clampPercent(value) {
  *   percentComplete: number,
  *   nextActionLabel: string,
  *   nextActionSection: string,
+ *   activationTitle: string,
+ *   activationDetail: string,
+ *   starterChoices: Array<{ id: string, label: string, detail: string, section: string, actionLabel: string }>,
  * }}
  */
 export function buildPilotOnboardingChecklist(evidence) {
@@ -103,5 +144,8 @@ export function buildPilotOnboardingChecklist(evidence) {
     percentComplete: clampPercent((completedCount / totalCount) * 100),
     nextActionLabel: nextIncomplete ? NEXT_ACTION_LABELS.get(nextIncomplete.id) ?? nextIncomplete.label : "Review pilot evidence",
     nextActionSection: nextIncomplete?.section ?? "control-room",
+    activationTitle: "Create your first monitored workflow",
+    activationDetail: "Add a node, choose a starter path, then send one real signal so Meridian can show runs, metrics, alerts, and client proof.",
+    starterChoices: FIRST_WORKFLOW_STARTER_CHOICES,
   }
 }

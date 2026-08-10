@@ -49,6 +49,32 @@ test("buildPilotOnboardingChecklist waits for real signals before marking teleme
   assert.match(checklist.nextActionLabel, /Send first signal/)
 })
 
+test("buildPilotOnboardingChecklist exposes first-workflow activation guidance", () => {
+  const checklist = buildPilotOnboardingChecklist({
+    hasProject: true,
+    nodeCount: 0,
+    hasIntegrationSetup: false,
+    realRunCount: 0,
+    realMetricCount: 0,
+    alertRuleCount: 0,
+    activeReportCount: 0,
+  })
+
+  assert.equal(checklist.activationTitle, "Create your first monitored workflow")
+  assert.match(checklist.activationDetail, /Add a node, choose a starter path, then send one real signal/)
+  assert.deepEqual(
+    checklist.starterChoices.map((choice) => [choice.id, choice.section]),
+    [
+      ["dify", "integrations"],
+      ["n8n", "integrations"],
+      ["javascript-sdk", "integrations"],
+      ["github-actions", "integrations"],
+      ["custom-rest-metric", "integrations"],
+    ]
+  )
+  assert.ok(checklist.starterChoices.every((choice) => choice.actionLabel.length > 0))
+})
+
 test("dashboard moves sign out into a dedicated account management space", async () => {
   const source = await readFile("src/components/meridian/dashboard.tsx", "utf8")
   const headerSource = source.match(/<header[\s\S]*?<\/header>/)?.[0] ?? ""
@@ -66,4 +92,22 @@ test("dashboard exposes pilot onboarding checklist from Control Room", async () 
   assert.match(source, /buildPilotOnboardingChecklist/)
   assert.match(source, /Pilot setup checklist/)
   assert.match(source, /Copy setup packet/)
+})
+
+test("dashboard exposes first-workflow activation shortcuts and stronger empty states", async () => {
+  const source = await readFile("src/components/meridian/dashboard.tsx", "utf8")
+
+  assert.match(source, /Create your first monitored workflow/)
+  assert.match(source, /Choose a starter path/)
+  assert.match(source, /Dify workflow/)
+  assert.match(source, /n8n workflow/)
+  assert.match(source, /JavaScript SDK/)
+  assert.match(source, /GitHub Actions/)
+  assert.match(source, /REST metric/)
+  assert.match(source, /Send test telemetry/)
+  assert.match(source, /data-activation-id="first-workflow"/)
+  assert.match(source, /data-activation-id="starter-choice"/)
+  assert.match(source, /Open Integrations/)
+  assert.match(source, /No real workflow runs yet/)
+  assert.doesNotMatch(source, /Create a telemetry token in Settings/)
 })

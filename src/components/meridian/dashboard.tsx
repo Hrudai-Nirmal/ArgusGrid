@@ -3889,6 +3889,10 @@ export function MeridianDashboard({
             onOpenSection={openDashboardSection}
             onStartTutorial={openFirstWorkflowTutorial}
             onCopySetupPacket={copyPilotSetupPacket}
+            onAddNode={() => {
+              addEndpointNode()
+              openDashboardSection("map")
+            }}
             onSelectNode={(nodeId) => {
               setSelectedId(nodeId)
               openDashboardSection("map")
@@ -4851,6 +4855,7 @@ function ControlRoomSection({
   onOpenSection,
   onStartTutorial,
   onCopySetupPacket,
+  onAddNode,
   onSelectNode,
 }: {
   nodes: EndpointNodeData[]
@@ -4879,6 +4884,7 @@ function ControlRoomSection({
   onOpenSection: (section: DashboardSection) => void
   onStartTutorial: () => void
   onCopySetupPacket: () => Promise<void>
+  onAddNode: () => void
   onSelectNode: (nodeId: string) => void
 }) {
   const attentionItems = [
@@ -4977,6 +4983,49 @@ function ControlRoomSection({
             </div>
           </div>
         </div>
+
+        <Card data-activation-id="first-workflow" className="border-primary/30 bg-primary/5">
+          <CardHeader className="flex flex-row items-start justify-between gap-3">
+            <div>
+              <CardTitle>{pilotOnboardingChecklist.activationTitle}</CardTitle>
+              <CardDescription>{pilotOnboardingChecklist.activationDetail}</CardDescription>
+            </div>
+            <Badge variant="secondary">
+              {pilotOnboardingChecklist.percentComplete}% ready
+            </Badge>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+              {pilotOnboardingChecklist.starterChoices.map((choice) => (
+                <button
+                  key={choice.id}
+                  data-activation-id="starter-choice"
+                  type="button"
+                  className="grid gap-2 rounded-lg border bg-background p-3 text-left text-sm transition-colors hover:bg-muted/40"
+                  onClick={() => onOpenSection(choice.section as DashboardSection)}
+                >
+                  <span className="font-medium">{choice.label}</span>
+                  <span className="text-xs leading-5 text-muted-foreground">{choice.detail}</span>
+                  <span className="text-xs font-medium text-primary">{choice.actionLabel}</span>
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={onAddNode}>
+                <Plus data-icon="inline-start" />
+                Add first workflow node
+              </Button>
+              <Button variant="outline" onClick={() => onOpenSection("integrations")}>
+                <Wand2 data-icon="inline-start" />
+                Choose a starter path
+              </Button>
+              <Button variant="outline" onClick={() => onOpenSection("integrations")}>
+                <Send data-icon="inline-start" />
+                Send test telemetry
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid gap-3 md:grid-cols-4">
           <MetricTile label="Estimated cost" value={`$${projectSummary.totalCost.toFixed(2)}`} detail="From submitted workflow telemetry" />
@@ -5163,7 +5212,10 @@ function RunsSection({
               ))}
             </div>
           ) : (
-            <div className="p-6 text-sm text-muted-foreground">No workflow runs have been ingested yet. Create a telemetry token in Settings, then use an integration template.</div>
+            <div className="grid gap-3 p-6 text-sm text-muted-foreground">
+              <div className="font-medium text-foreground">No real workflow runs yet.</div>
+              <div>Open Integrations, choose Dify, n8n, GitHub Actions, or JavaScript SDK, create a one-time token, then use Send test telemetry or run the external workflow once.</div>
+            </div>
           )}
         </div>
       </div>
@@ -6296,7 +6348,7 @@ function IntegrationsSection({
                   </Button>
                   <Button variant="outline" size="sm" onClick={sendTestRun} disabled={!integrationToken || isSendingTestRun}>
                     <Send data-icon="inline-start" />
-                    {isSendingTestRun ? "Sending..." : "Send test run"}
+                    {isSendingTestRun ? "Sending..." : "Send test telemetry"}
                   </Button>
                   <Button
                     variant="outline"
@@ -9629,14 +9681,17 @@ function EmptyInspector({
       <div className="flex flex-col gap-4 p-5">
         <Card>
           <CardHeader>
-            <CardTitle>Start The Project Map</CardTitle>
-            <CardDescription>Create the first endpoint node for this blank project.</CardDescription>
+            <CardTitle>Create your first monitored workflow</CardTitle>
+            <CardDescription>Add the first workflow node for this blank project, then open Integrations to choose a starter path and send real telemetry.</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
             <Button data-tutorial-id="map-add-node" onClick={onAddNode}>
               <Plus data-icon="inline-start" />
-              Add endpoint node
+              Add first workflow node
             </Button>
+            <div className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground">
+              Next: Open Integrations, choose Dify workflow, n8n workflow, JavaScript SDK, GitHub Actions, or REST metric, then send test telemetry.
+            </div>
             <div className="text-xs text-muted-foreground">Signed in as {currentUser.email ?? currentUser.name ?? "GitHub user"}</div>
           </CardContent>
         </Card>
