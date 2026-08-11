@@ -71,6 +71,25 @@ function serializeCreditLedgerEntry(entry: Awaited<ReturnType<typeof getRecentCr
   }
 }
 
+function serializeBillingSupportEvent(event: Awaited<ReturnType<typeof getRecentBillingSupportEvents>>[number]) {
+  const metadata = event.metadata && typeof event.metadata === "object" && !Array.isArray(event.metadata) ? event.metadata : {}
+
+  return {
+    id: event.id,
+    action: event.action,
+    createdAt: event.createdAt.toISOString(),
+    metadata: {
+      resource: typeof metadata.resource === "string" ? metadata.resource : null,
+      reason: typeof metadata.reason === "string" ? metadata.reason : null,
+      limit: typeof metadata.limit === "number" ? metadata.limit : null,
+      used: typeof metadata.used === "number" ? metadata.used : null,
+      creditsRemaining: typeof metadata.creditsRemaining === "number" ? metadata.creditsRemaining : null,
+      creditsCharged: typeof metadata.creditsCharged === "number" ? metadata.creditsCharged : null,
+      description: typeof metadata.description === "string" ? metadata.description : null,
+    },
+  }
+}
+
 function serializeBillingConfirmation(event: Awaited<ReturnType<typeof getRecentWebhookConfirmations>>[number] | null) {
   return event ? {
     type: event.eventType,
@@ -165,6 +184,23 @@ async function getRecentWebhookConfirmations(resourceIds: string[]) {
   })
 }
 
+async function getRecentBillingSupportEvents(projectId: string) {
+  return getPrisma().auditLog.findMany({
+    where: {
+      projectId,
+      action: { in: ["billing.entitlement_denied", "billing.credits_consumed"] },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 12,
+    select: {
+      id: true,
+      action: true,
+      metadata: true,
+      createdAt: true,
+    },
+  })
+}
+
 /** Returns secret-safe mirrored Paddle subscription and transaction state. */
 export async function GET(request: Request) {
   const { error, userId } = await getApiUserId()
@@ -184,7 +220,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Project not found." }, { status: 404 })
   }
 
-  const [latestSubscription, paddleTransactions, paddleCustomers, creditLedgerEntries] = await Promise.all([
+  const [latestSubscription, paddleTransactions, paddleCustomers, creditLedgerEntries, supportEvents] = await Promise.all([
     getLatestSubscription(project.id, project.organizationId),
     getRecentTransactions(project.id, project.organizationId),
     prisma.paddleCustomer.findMany({
@@ -194,6 +230,7 @@ export async function GET(request: Request) {
       select: { id: true, paddleCustomerId: true, email: true, updatedAt: true },
     }),
     getRecentCreditLedgerEntries(project.id, project.organizationId),
+    getRecentBillingSupportEvents(project.id),
   ])
   const paddleSubscriptions = latestSubscription ? [latestSubscription] : []
   const entitlement = await getProjectBillingEntitlement(project.id, prisma)
@@ -291,6 +328,7 @@ export async function GET(request: Request) {
       } : null,
       transactions: paddleTransactions.map(serializeTransaction),
       creditLedger: creditLedgerEntries.map(serializeCreditLedgerEntry),
+      supportEvents: supportEvents.map(serializeBillingSupportEvent),
     },
   })
 }

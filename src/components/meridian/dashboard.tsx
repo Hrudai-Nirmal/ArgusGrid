@@ -87,6 +87,7 @@ import { ALERT_RULE_TEMPLATES, buildAlertRulePayloadFromTemplate } from "@/lib/a
 import { validateApiAuthConfig } from "@/lib/api-auth-headers.mjs"
 import { getApiSetupFieldHelp, getAuthHeaderPlaceholder } from "@/lib/api-setup-help.mjs"
 import { MERIDIAN_CREDIT_PACKS, MERIDIAN_PRICING_PLANS, getOperationsPolicyCopy } from "@/lib/billing-plans.mjs"
+import { buildBillingSupportPacket } from "@/lib/billing-support.mjs"
 import { buildGlobalSearchIndex, searchGlobalIndex, type GlobalSearchResult } from "@/lib/global-search.mjs"
 import {
   allEndpointNodes,
@@ -536,6 +537,12 @@ type BillingStatusSnapshot = {
     message: string
     action: string
     percentUsed: number | null
+  }[]
+  supportEvents: {
+    id: string
+    action: string
+    createdAt: string
+    metadata: Record<string, unknown> | null
   }[]
 }
 type ProjectOperationsPolicyRecord = WorkspacePayload["project"]["operationsPolicy"]
@@ -7376,6 +7383,7 @@ function BillingSection({
   const [isPolicyDetailsOpen, setIsPolicyDetailsOpen] = useState(false)
   const [checkoutMessage, setCheckoutMessage] = useState("")
   const [checkoutLoadingId, setCheckoutLoadingId] = useState<string | null>(null)
+  const [supportPacketMessage, setSupportPacketMessage] = useState("")
   const activeBillingKey = billingStatus?.subscription.billingKey ?? "free_sandbox"
   const entitlement = billingStatus?.entitlement ?? null
   const billingWarnings = billingStatus?.warnings ?? []
@@ -7392,6 +7400,23 @@ function BillingSection({
     "credits-10000": process.env.NEXT_PUBLIC_PADDLE_PRICE_CREDITS_10000 ?? "",
   }
   const checkoutPrefillEmail = currentUser.email ?? "test@meridian.local"
+
+  const copyBillingSupportPacket = async () => {
+    if (!billingStatus) {
+      setSupportPacketMessage("Refresh status before copying a support packet.")
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(buildBillingSupportPacket({
+        projectName: project.name,
+        billing: billingStatus,
+      }))
+      setSupportPacketMessage("Billing support packet copied.")
+    } catch {
+      setSupportPacketMessage("Could not copy automatically. Browser clipboard access was blocked.")
+    }
+  }
 
   const startPaddleCheckout = async ({
     checkoutId,
@@ -7463,6 +7488,7 @@ function BillingSection({
             </div>
             <div className="flex flex-wrap justify-end gap-2">
               <Button size="sm" variant="outline" onClick={onRefreshBillingStatus}>Refresh status</Button>
+              <Button size="sm" variant="outline" onClick={copyBillingSupportPacket} disabled={!billingStatus}>Copy support packet</Button>
               <Button size="sm" onClick={onOpenCustomerPortal} disabled={!canManageOrganization || !billingStatus?.customer.hasCustomer}>
                 Manage subscription
               </Button>
@@ -7500,6 +7526,7 @@ function BillingSection({
                   </>
                 ) : null}
                 {billingStatusMessage ? <div className="text-xs text-muted-foreground">{billingStatusMessage}</div> : null}
+                {supportPacketMessage ? <div className="text-xs text-muted-foreground">{supportPacketMessage}</div> : null}
               </div>
               <div className="mt-4 rounded-lg border bg-background p-3">
                 <div className="flex flex-wrap items-start justify-between gap-2">

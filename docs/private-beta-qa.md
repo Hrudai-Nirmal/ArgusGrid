@@ -66,6 +66,7 @@ Use this checklist for production validation on `https://meridian.hrudainirmal.i
 - Confirm failed payment and modal dismiss states show clear non-secret messages.
 - Click `Refresh status` after the webhook arrives and confirm Subscription management shows the mirrored plan/customer state and Billing history shows the transaction.
 - Confirm Subscription management shows `Billing sync health`, including checkout readiness, signed confirmation readiness, account portal readiness, latest signed confirmation timestamp/type/status, and failed confirmation count.
+- Click `Copy support packet` and confirm the copied `Billing support packet` includes plan, entitlement source, sync state, usage, credits, warnings, and recent safe denial/credit events without exposing provider secrets, raw payment payloads, webhook URLs, raw tokens, or environment values.
 - Temporarily test a missing/invalid notification-secret setup in a safe environment and confirm `Billing sync health` shows a setup warning without exposing provider secrets, webhook URLs, raw provider payloads, payment credentials, or env values.
 - Confirm `Billing alerts` shows low-credit, credits-exhausted, Plan limit approaching, payment-attention, grace-ending, and rate-limit warning states when the underlying safe entitlement evidence is present.
 - Trigger a disposable workflow ingestion `402` or `429` and confirm a durable billing email notification job is queued for eligible email-notification recipients without consuming customer credits.
