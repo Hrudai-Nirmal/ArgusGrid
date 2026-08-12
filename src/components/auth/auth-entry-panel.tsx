@@ -6,8 +6,9 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { getCsrfToken, signIn } from "next-auth/react"
-import { GitBranch, KeyRound, Network } from "lucide-react"
+import { GitBranch, KeyRound } from "lucide-react"
 
+import { MeridianLogo } from "@/components/brand/meridian-logo"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
@@ -123,8 +124,8 @@ export function AuthEntryPanel({
   return (
     <Card className="w-full border-border/70 shadow-xl shadow-primary/5">
       <CardHeader>
-        <div className="mb-2 flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-          <Network className="size-6" />
+        <div className="mb-2 flex size-12 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/25">
+          <MeridianLogo className="size-10" />
         </div>
         <CardTitle>{title}</CardTitle>
         {description ? <CardDescription>{description}</CardDescription> : null}

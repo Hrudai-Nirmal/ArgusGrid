@@ -6,6 +6,7 @@ import type { ReactNode } from "react"
 import { Activity, ArrowRight, BarChart3, BellRing, FileCheck2, Gauge, Network, RefreshCw, TimerReset } from "lucide-react"
 
 import { AuthEntryPanel } from "@/components/auth/auth-entry-panel"
+import { MeridianLogo } from "@/components/brand/meridian-logo"
 import BorderGlow from "@/components/marketing/border-glow"
 import DotField from "@/components/marketing/dot-field"
 import { IntegrationBeamDemo } from "@/components/marketing/integration-beam-demo"
@@ -155,8 +156,8 @@ export function LandingPage() {
       >
         <div className="flex w-full items-center justify-between gap-3">
           <a href="#top" className="flex items-center gap-2 rounded-full px-2 py-1 font-semibold text-foreground">
-            <span className="flex size-9 items-center justify-center rounded-full border border-border bg-secondary text-secondary-foreground shadow-lg shadow-black/20">
-              <Network className="size-5" />
+            <span className="flex size-9 items-center justify-center rounded-full border border-border bg-secondary shadow-lg shadow-black/20">
+              <MeridianLogo className="size-7" />
             </span>
             Meridian
           </a>

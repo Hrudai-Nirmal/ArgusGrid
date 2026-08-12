@@ -60,6 +60,7 @@ import {
 import { signOut } from "next-auth/react"
 import type { Session } from "next-auth"
 
+import { MeridianLogo } from "@/components/brand/meridian-logo"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -3204,8 +3205,8 @@ export function MeridianDashboard({
       </Dialog>
       <aside className="flex w-full shrink-0 flex-col border-b bg-sidebar px-4 py-4 text-sidebar-foreground lg:w-72 lg:border-b-0 lg:border-r">
         <div className="flex items-center gap-3 px-1">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
-            <Network className="size-5" />
+          <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 shadow-sm ring-1 ring-primary/25">
+            <MeridianLogo className="size-8" />
           </div>
           <div>
             <div className="text-base font-semibold">Meridian</div>

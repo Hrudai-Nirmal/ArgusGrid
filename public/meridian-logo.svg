@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%" role="img" aria-label="Meridian logo">
+  <defs>
+    <linearGradient id="darkFacet" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4A154B"/>
+      <stop offset="50%" stop-color="#3B113C"/>
+      <stop offset="100%" stop-color="#240727"/>
+    </linearGradient>
+    <linearGradient id="medFacet" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7B2CBF"/>
+      <stop offset="100%" stop-color="#5A189A"/>
+    </linearGradient>
+    <linearGradient id="lightFacet" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E0AFA0"/>
+      <stop offset="0%" stop-color="#C77DFF"/>
+      <stop offset="100%" stop-color="#9D4EDD"/>
+    </linearGradient>
+    <linearGradient id="brightLilac" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E8AEFF"/>
+      <stop offset="100%" stop-color="#B5179E"/>
+    </linearGradient>
+    <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#9D4EDD"/>
+      <stop offset="50%" stop-color="#7B2CBF"/>
+      <stop offset="100%" stop-color="#3B113C"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#1A0022" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <style>
+    .facet-light { fill: url(#brightLilac); }
+    .facet-med { fill: url(#lightFacet); }
+    .facet-dark { fill: url(#medFacet); }
+    .facet-deep { fill: url(#darkFacet); }
+  </style>
+  <g filter="url(#shadow)">
+    <!-- Outer Meridian Ring -->
+    <path d="M 250,90 A 160,160 0 1,1 249.9,90 Z" fill="none" stroke="url(#ringGrad)" stroke-width="24" stroke-linecap="round"/>
+    <circle cx="250" cy="250" r="147" fill="none" stroke="#E8AEFF" stroke-width="2" opacity="0.4"/>
+    <circle cx="250" cy="250" r="173" fill="none" stroke="#240727" stroke-width="2" opacity="0.3"/>
+    <polygon points="250,250 250,45 268,232" class="facet-light"/>
+    <polygon points="250,250 250,45 232,232" class="facet-deep"/>
+    <polygon points="250,250 250,455 232,268" class="facet-med"/>
+    <polygon points="250,250 250,455 268,268" class="facet-deep"/>
+    <polygon points="250,250 455,250 268,232" class="facet-light"/>
+    <polygon points="250,250 455,250 268,268" class="facet-dark"/>
+    <polygon points="250,250 45,250 232,268" class="facet-med"/>
+    <polygon points="250,250 45,250 232,232" class="facet-deep"/>
+    <polygon points="250,250 385,115 272,228" class="facet-light"/>
+    <polygon points="250,250 385,115 258,212" class="facet-dark"/>
+    <polygon points="250,250 115,115 228,212" class="facet-med"/>
+    <polygon points="250,250 115,115 242,228" class="facet-deep"/>
+    <polygon points="250,250 385,385 258,288" class="facet-med"/>
+    <polygon points="250,250 385,385 272,272" class="facet-deep"/>
+    <polygon points="250,250 115,385 242,272" class="facet-light"/>
+    <polygon points="250,250 115,385 228,288" class="facet-dark"/>
+    <circle cx="250" cy="250" r="2" fill="#FFFFFF" opacity="0.8"/>
+  </g>
+</svg>
