@@ -62,6 +62,19 @@ enum NotificationJobStatus {
   CANCELLED
 }
 
+model RuntimeSetting {
+  id                     String   @id @default("default")
+  jobBackend             String   @default("inngest") @map("job_backend")
+  selfHostedWorkerUrl    String?  @map("self_hosted_worker_url")
+  backgroundRecoveryMode String   @default("manual") @map("background_recovery_mode")
+  retentionCleanupMode   String   @default("manual") @map("retention_cleanup_mode")
+  pollingMode            String   @default("disabled") @map("polling_mode")
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  @@map("runtime_settings")
+}
+
 model User {
   id              String                   @id @default(cuid())
   name            String?

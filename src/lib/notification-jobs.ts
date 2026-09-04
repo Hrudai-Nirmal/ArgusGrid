@@ -6,12 +6,11 @@ import "server-only"
 import { randomUUID } from "node:crypto"
 import type { AlertSeverity, NotificationJob, NotificationJobStatus, Prisma, PrismaClient } from "@prisma/client"
 
-import { inngest } from "@/inngest/client"
 import { consumeProjectUsageCredits } from "@/lib/billing-entitlements-server"
 import { getBillingNotificationEmailContent } from "@/lib/billing-notifications.mjs"
+import { dispatchNotificationJobsByBackend } from "@/lib/job-service"
 import { sendEmailAttempt } from "@/lib/notifications"
 import { getPrisma } from "@/lib/prisma"
-import { logServerError } from "@/lib/server-logging"
 import { normalizeSlackEvents, sendSlackAttempt, slackSeverityAllows } from "@/lib/slack"
 import { getWebhookRecipient, normalizeWebhookEvents, sendWebhookAttempt } from "@/lib/webhooks"
 
@@ -278,18 +277,7 @@ export async function queueTestSlackJob(prisma: DatabaseClient, input: { project
 
 /** Publishes queued job identifiers without failing the database transaction that created them. */
 export async function dispatchNotificationJobs(jobs: { id: string; generation: number }[]) {
-  if (!jobs.length) return { dispatched: 0 }
-  try {
-    await inngest.send(jobs.map((job) => ({
-      id: `notification-job-${job.id}-${job.generation}`,
-      name: "meridian/notification.process",
-      data: { jobId: job.id, generation: job.generation },
-    })))
-    return { dispatched: jobs.length }
-  } catch (error) {
-    logServerError("notification_jobs.dispatch_failed", error, { component: "inngest", jobCount: jobs.length })
-    return { dispatched: 0 }
-  }
+  return dispatchNotificationJobsByBackend(jobs)
 }
 
 function getEmailContent(job: NotificationJob & { project: { name: string }; alertEvent: ({ title: string; message: string; severity: AlertSeverity; node: { label: string } | null } | null) }) {
